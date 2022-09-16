@@ -138,7 +138,3 @@ def sh_get_freezing_flag():
 
 def sh_get_current_offset():
     return 23
-
-
-#TESTING
-sh_main_loop()
