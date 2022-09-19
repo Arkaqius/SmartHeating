@@ -18,7 +18,7 @@ Offset bigger than 0 -> bigger flow
 
 NOMINAL_FLOW_TEMP       = 45
 RAD_ENFORCE_THRS        = 0.8
-WAM_PARAMS              = [0.25,0.25,0.25,0.25]
+WAM_PARAMS              = [0.3,0.3,0.4]
 WARM_FALG_OFFSET        = 2
 FREZZING_FLAG_OFFSET    = 2
 #Radiators offset
@@ -27,7 +27,7 @@ MAX_RADS_EFFECT_OFFSET  = 4
 MAX_SINGLE_RAD_OFFSET   = 4
 LOGGING_FLAG            = True
 
-class SmartHeat(hass.Hass):
+class SmartHeating(hass.Hass):
     def initialize(self):
         start_time = self.datetime() + datetime.timedelta(seconds=CYCLE_TIME)
         self.handle = self.run_every(self.sh_main_loop,start_time,CYCLE_TIME)
@@ -41,16 +41,14 @@ class SmartHeat(hass.Hass):
     #Setpoints mapping
     def setpoint_update(self, entity, attribute, old, new, kwargs):
         if 'TRV' in kwargs['devices'][0]:
-            for dev in kwargs['devices']:
-                entity = self.get_entity(dev)
-                entity.call_service('set_temperature',temperature = new)
+            for dev in kwargs['devices']:   
+                self.call_service('climate/set_temperature',entity_id = dev,temperature = new)
 
         else:
-            entity = self.get_entity(dev)
-            entity.call_service('set_number',value = new)
+            self.call_service('number/set_value',entity_id = kwargs['devices'][0],value = new)
 
     #Main smart heating event loop
-    def sh_main_loop(self):
+    def sh_main_loop(self,kwargs):
         #Init all offsets
         freezing_flag = False
         curr_flow_temp = 0
@@ -69,7 +67,7 @@ class SmartHeat(hass.Hass):
         #Calculate WAM
         off_wam = self.sh_wam(list(map(operator.sub, wam_set_points, wam_temp)) ,WAM_PARAMS)
         #Check warm in flag
-        if(warm_flag):
+        if(warm_flag == 'on'):
             off_warm_flag = WARM_FALG_OFFSET
         #Check freezing forecast
         if(freezing_flag):
@@ -83,15 +81,15 @@ class SmartHeat(hass.Hass):
         off_final =  off_wam + off_warm_flag + off_frezzing + off_radiators
         #Logging
         if(LOGGING_FLAG):
-            self.log('Its working, somehow')
+            self.log(f'off_wam:{off_wam}\off_warm_flag:{off_warm_flag}\off_frezzing:{off_frezzing}\off_radiators:{off_radiators}\off_final:{off_final}\n')
         #Update thermostat offset
-        sh_set_offset(off_final)
+        self.sh_set_offset(off_final)
         
     
     #Function to set offset
     def sh_set_offset(self,offset):
         entity = self.get_entity('number.thermostat_hc1_offset_temperature')
-        entity.call_service('set_number',value = offset)
+        entity.call_service('set_value',value = offset)
 
     #Function to calculate weighten mean
     def sh_wam(self,temperatures,weights):
@@ -106,53 +104,53 @@ class SmartHeat(hass.Hass):
     def sh_get_wam_temperatures(self):
         wam_temp = []
         #Get living room temperature
-        wam_temp.append(self.my_enitity.get_state('sensor.livingroom_temperature'))
+        wam_temp.append(self.get_state('sensor.livingroom_temperature'))
         #Get Kitchen temperature
-        #wam_temp.append(self.my_enitity.get_state('sensor.livingroom_main_climatesensor_temperature'))
+        #wam_temp.append(self.get_state('sensor.livingroom_main_climatesensor_temperature'))
         #Get Bathroom temperature
-        wam_temp.append(self.my_enitity.get_state('sensor.bathroom_temperature'))
+        wam_temp.append(self.get_state('sensor.bathroom_temperature'))
         #Get Upper bathroom temperature
-        wam_temp.append(self.my_enitity.get_state('sensor.upperbathroom_temperature')) 
+        wam_temp.append(self.get_state('sensor.upperbathroom_temperature')) 
         #Get UpperCorridor temperature
-        #wam_temp.append(self.my_enitity.get_state('sensor.livingroom_main_climatesensor_temperature'))
+        #wam_temp.append(self.get_state('sensor.livingroom_main_climatesensor_temperature'))
         #Get Corridor temperature
-        wam_temp.append(self.my_enitity.get_state('sensor.corridor_temperature'))
+        #wam_temp.append(self.get_state('sensor.corridor_temperature'))
         #Get Entrance temperature
-        #wam_temp.append(self.my_enitity.get_state('sensor.livingroom_main_climatesensor_temperature'))
+        #wam_temp.append(self.get_state('sensor.livingroom_main_climatesensor_temperature'))
         
-        return wam_temp
+        return [float(i) for i in wam_temp]
 
     def sh_get_wam_setpoints(self):
         setpoints = []
         #Get living room temperature
-        setpoints.append(self.my_enitity.get_state('input_number.sh_livingroom_setpoint'))
+        setpoints.append(self.get_state('input_number.sh_livingroom_setpoint'))
         #Get Kitchen temperature
-        #setpoints.append(self.my_enitity.get_state('input_number.sh_bathroom_setpoint'))
+        #setpoints.append(self.get_state('input_number.sh_bathroom_setpoint'))
         #Get Bathroom temperature
-        setpoints.append(self.my_enitity.get_state('input_number.sh_bathroom_setpoint'))
+        setpoints.append(self.get_state('input_number.sh_bathroom_setpoint'))
         #Get Upper bathroom temperature
-        setpoints.append(self.my_enitity.get_state('input_number.sh_upperbathroom_setpoint'))
+        setpoints.append(self.get_state('input_number.sh_upperbathroom_setpoint'))
         #Get UpperCorridor temperature
-        #setpoints.append(self.my_enitity.get_state('input_number.sh_bathroom_setpoint'))
+        #setpoints.append(self.get_state('input_number.sh_bathroom_setpoint'))
         #Get Corridor temperature
-        setpoints.append(self.my_enitity.get_state('input_number.sh_bathroom_setpoint'))
+        #setpoints.append(self.get_state('input_number.corridor_temperature'))
         #Get Entrance temperature
-        #setpoints.append(self.my_enitity.get_state('input_number.sh_bathroom_setpoint'))
+        #setpoints.append(self.get_state('input_number.sh_bathroom_setpoint'))
 
-        return setpoints
+        return [float(i) for i in setpoints]
 
     def sh_determinate_radiators_flag(self):
         error = 0
         #Get radiators errors
-        error += max(self.my_enitity.get_state('sensor.garage_temperatureError'),0)
-        error += max(self.my_enitity.get_state('sensor.bedroom_temperatureError'),0)
-        error += max(self.my_enitity.get_state('sensor.office_temperatureError'),0)
-        error += max(self.my_enitity.get_state('sensor.kidsroom_temperatureError'),0)
+        error += max(float(self.get_state('sensor.garage_temperatureerror')),0)
+        error += max(float(self.get_state('sensor.bedroom_temperatureerror')),0)
+        error += max(float(self.get_state('sensor.office_temperatureerror')),0)
+        error += max(float(self.get_state('sensor.kidsroom_temperatureerror')),0)
         #Determinate offset
         return self.sh_dtrmnt_offset(error)
 
     def sh_get_flow_temp(self):
-        return self.my_enitity.get_state('sensor.boiler_current_flow_temperature')
+        return float(self.get_state('sensor.boiler_current_flow_temperature'))
 
     def sh_dtrmnt_offset(self,error):
         return MAX_RADS_EFFECT_OFFSET * (error/(MAX_SINGLE_RAD_OFFSET*NUM_OF_RADIATORS))
@@ -162,4 +160,4 @@ class SmartHeat(hass.Hass):
         return False
 
     def sh_get_warm_flag(self):
-        return self.my_enitity.get_state('input_boolean.sh_make_warmer')
+        return self.get_state('input_boolean.sh_make_warmer')
