@@ -88,9 +88,14 @@ class SmartHeat(hass.Hass):
         if(LOGGING_FLAG):
             self.log('Its working, somehow')
         #Update thermostat offset
-        entity = self.get_entity('number.thermostat_hc1_offset_temperature')
-        entity.call_service('set_number',value = off_final)
+        sh_set_offset(off_final)
+        
     
+    #Function to set offset
+    def sh_set_offset(self,offset):
+        entity = self.get_entity('number.thermostat_hc1_offset_temperature')
+        entity.call_service('set_number',value = offset)
+
     #Function to calculate weighten mean
     def sh_wam(self,temperatures,weights):
         mean = nan
@@ -148,9 +153,6 @@ class SmartHeat(hass.Hass):
         error += max(self.my_enitity.get_state('sensor.kidsroom_temperatureError'),0)
         #Determinate offset
         return self.sh_dtrmnt_offset(error)
-
-    def sh_get_curr_setpoint(self):
-        return 21
 
     def sh_get_flow_temp(self):
         return self.my_enitity.get_state('sensor.boiler_current_flow_temperature')
