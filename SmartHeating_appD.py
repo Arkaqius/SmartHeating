@@ -37,9 +37,6 @@ class SmartHeat(hass.Hass):
         self.listen_state(self.setpoint_update, "input_number.sh_kidsroom_setpoint", devices=['climate.kidsroom_TRV'])
         self.listen_state(self.setpoint_update, "input_number.sh_office_setpoint", devices=['climate.office_TRV'])
         self.listen_state(self.setpoint_update, "input_number.sh_corridor_setpoint", devices=['number.thermostat_hc1_manual_temperature'])
-    
-
-        sensor.thermostat_hc1_manual_temperature
 
     #Setpoints mapping
     def setpoint_update(self, entity, attribute, old, new, kwargs):
