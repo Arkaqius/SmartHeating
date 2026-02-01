@@ -6,19 +6,19 @@ HeaterController:
 
   # WAM Factors
   wam_factors:
-    livingroom: 2
-    corridor: 2
-    bathroom: 2
-    entrance: 1 
+    livingroom: 3
+    corridor: 3
+    bathroom: 3
+    entrance: 1
     upper_corridor: 2
     wardrobe: 1
     upper_bathroom: 3
-    
+
   # Radiator Factors
   rads_factors:
     office: 2
-    kidsroom: 2
-    bedroom: 4
+    kidsroom: 8
+    bedroom: 8
     garage: 1
 
   # Config
@@ -32,43 +32,43 @@ HeaterController:
     radiator_boost_threshold: 25
     rads_error_factor: 4
     force_burn_thres: 0
-  
+
   # HAL
   HAL_setpoint_mapping_in:
-    office_setpoint: 'input_number.sh_office_setpoint'
-    kidsroom_setpoint: 'input_number.sh_kidsroom_setpoint'
-    bedroom_setpoint: 'input_number.sh_bedroom_setpoint'
-    garage_setpoint:  'input_number.sh_garage_setpoint'
+    office_setpoint: "input_number.sh_office_setpoint"
+    kidsroom_setpoint: "input_number.sh_kidsroom_setpoint"
+    bedroom_setpoint: "input_number.sh_bedroom_setpoint"
+    garage_setpoint: "input_number.sh_garage_setpoint"
   HAL_setpoint_mapping_out:
-    office_setpoint: 'climate.office_TRV'
-    kidsroom_setpoint: 'climate.kidsroom_TRV'
-    bedroom_left_setpoint: 'climate.bedroom_left_TRV'
-    bedroom_right_setpoint: 'climate.bedroom_right_TRV'
-    garage_setpoint:  'climate.garage_TRV'
+    office_setpoint: "climate.office_TRV"
+    kidsroom_setpoint: "climate.kidsroom_TRV"
+    bedroom_left_setpoint: "climate.bedroom_left_TRV"
+    bedroom_right_setpoint: "climate.bedroom_right_TRV"
+    garage_setpoint: "climate.garage_TRV"
   HAL_TRV_pos:
-    garage_pos: 'sensor.garage_trv_position'
-    bedroomLeft_pos: 'sensor.bedroom_left_trv_position'
-    bedroomRight_pos: 'sensor.bedroom_right_trv_position'
-    office_pos: 'sensor.office_trv_position'
-    kidsRoom_pos: 'sensor.kidsroom_trv_position'
+    garage_pos: "sensor.garage_trv_position"
+    bedroomLeft_pos: "sensor.bedroom_left_trv_position"
+    bedroomRight_pos: "sensor.bedroom_right_trv_position"
+    office_pos: "sensor.office_trv_position"
+    kidsRoom_pos: "sensor.kidsroom_trv_position"
   HAL_output:
-    thermostat_setpoint: 'number.thermostat_hc1_manual_temperature_2'
-    wam_value: 'input_number.sh_wam_offset'
-    setpoint_offset: 'input_number.sh_setpoint_offset'
+    thermostat_setpoint: "number.thermostat_hc1_manual_temperature_2"
+    wam_value: "input_number.sh_wam_offset"
+    setpoint_offset: "input_number.sh_setpoint_offset"
   HAL_inputs:
-     makeWarm_flag: 'input_boolean.sh_make_warmer'
-     forceFlow_flag: 'input_boolean.sh_force_flow'
-     frezzing_flag: 'input_boolean.sh_frezzing'
-     corridor_setpoint: 'input_number.sh_corridor_setpoint'
+    makeWarm_flag: "input_boolean.sh_make_warmer"
+    forceFlow_flag: "input_boolean.sh_force_flow"
+    frezzing_flag: "input_boolean.sh_frezzing"
+    corridor_setpoint: "input_number.sh_corridor_setpoint"
   HAL_errors:
-      livingRoom_error: 'sensor.livingroom_temperatureerror'
-      corridor_error: 'sensor.corridor_temperatureerror'
-      bathroom_error: 'sensor.bathroom_temperatureerror'
-      entrance_error: 'sensor.entrance_temperatureerror'
-      uppercorridor_error: 'sensor.uppercorridor_temperatureerror'
-      wardrobe_error: 'sensor.wardrobe_temperatureerror'
-      upperbathroom_error: 'sensor.upperbathroom_temperatureerror'
-      office_error: 'sensor.office_temperatureerror'
-      kidsroom_error: 'sensor.kidsroom_temperatureerror'
-      garage_error: 'sensor.garage_temperatureerror'
-      bedroom_error: 'sensor.bedroom_temperatureerror'
+    livingRoom_error: "sensor.livingroom_temperatureerror"
+    corridor_error: "sensor.corridor_temperatureerror"
+    bathroom_error: "sensor.bathroom_temperatureerror"
+    entrance_error: "sensor.entrance_temperatureerror"
+    uppercorridor_error: "sensor.uppercorridor_temperatureerror"
+    wardrobe_error: "sensor.wardrobe_temperatureerror"
+    upperbathroom_error: "sensor.upperbathroom_temperatureerror"
+    office_error: "sensor.office_temperatureerror"
+    kidsroom_error: "sensor.kidsroom_temperatureerror"
+    garage_error: "sensor.garage_temperatureerror"
+    bedroom_error: "sensor.bedroom_temperatureerror"
