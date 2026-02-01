@@ -93,16 +93,19 @@ class SmartHeating(hass.Hass):
             "warm_flag_offset", section="config", default=0
         )
         self.frezzying_flag_offset = self.get_config_value(
-            "frezzing_flag_offset", section="config", default=0
-        )
-        self.logging_flag = self.get_config_value(
-            "logging", section="config", default=True
+            "frezzing_flag_offset",
+            section="config",
+            default=0,
+            aliases=["freezing_flag_offset"],
         )
         self.error_offset_update_threshold = self.get_config_value(
             "error_offset_update_threshold", section="config", default=0.5
         )
         self.force_flow_offset = self.get_config_value(
-            "force_flow_off", section="config", default=0
+            "force_flow_off",
+            section="config",
+            default=0,
+            aliases=["force_flow_offset"],
         )
         self.radiator_boost_threshold = self.get_config_value(
             "radiator_boost_threshold", section="config", default=0
@@ -187,7 +190,13 @@ class SmartHeating(hass.Hass):
             ],
         )
 
-    def get_config_value(self, key: str, section: str, default: Any = None) -> Any:
+    def get_config_value(
+        self,
+        key: str,
+        section: str,
+        default: Any = None,
+        aliases: Optional[list[str]] = None,
+    ) -> Any:
         """
         Helper to fetch config values with a default fallback.
 
@@ -199,7 +208,27 @@ class SmartHeating(hass.Hass):
         Returns:
             Any: The resolved config value or the default.
         """
-        return self.args.get(section, {}).get(key, default)
+        section_data = self.args.get(section, {})
+        if key in section_data:
+            return section_data[key]
+
+        if aliases:
+            for alias in aliases:
+                if alias in section_data:
+                    self.log(
+                        f"Config key '{section}.{alias}' is deprecated or misspelled; use '{section}.{key}'.",
+                        level="ERROR",
+                    )
+                    return section_data[alias]
+
+        if default is not None:
+            self.log(
+                f"Config missing: '{section}.{key}'. Using default {default}.",
+                level="ERROR",
+            )
+            return default
+
+        raise KeyError(f"Missing config key '{section}.{key}'")
 
     def handle_config_error(self, error: Exception) -> None:
         """
@@ -208,10 +237,13 @@ class SmartHeating(hass.Hass):
         Args:
             error (Exception): Exception raised while reading config.
         """
-        self.log(f"Configuration Error: Missing key {str(error)}", level="ERROR")
+        self.log(f"Configuration Error: {str(error)}", level="ERROR")
         self.stop_app("HeaterController")
+        raise error
 
-    def load_hal_mappings(self, section: str, mappings: list[tuple[str, str]]) -> None:
+    def load_hal_mappings(
+        self, section: str, mappings: list[tuple[str, str]], required: bool = True
+    ) -> None:
         """
         Helper to load HAL mappings from args into class attributes.
 
@@ -219,8 +251,16 @@ class SmartHeating(hass.Hass):
             section (str): Args section containing the mappings.
             mappings (list[tuple[str, str]]): (key, attribute_name) pairs to load.
         """
+        missing: list[str] = []
+        section_data = self.args.get(section, {})
         for key, attribute in mappings:
-            setattr(self, attribute, self.args.get(section, {}).get(key))
+            value = section_data.get(key)
+            if required and value in (None, ""):
+                missing.append(f"{section}.{key}")
+            setattr(self, attribute, value)
+
+        if missing:
+            self.handle_config_error(KeyError(", ".join(missing)))
 
     def log_config(self) -> None:
         """
@@ -230,7 +270,6 @@ class SmartHeating(hass.Hass):
             "cycle_time",
             "warm_flag_offset",
             "frezzying_flag_offset",
-            "logging_flag",
             "error_offset_update_threshold",
             "force_flow_offset",
             "radiator_boost_threshold",
@@ -239,7 +278,7 @@ class SmartHeating(hass.Hass):
         ]
 
         for item in config_items:
-            self.log(f"Config: {item}: {getattr(self, item)}", level="DEBUG")
+            self.log_debug(f"Config: {item}: {getattr(self, item)}")
 
     def init_wam_params(self) -> list[float]:
         """
@@ -278,8 +317,20 @@ class SmartHeating(hass.Hass):
         Returns:
         List[float]: A list of normalized factors.
         """
+        factor_data = self.args.get(factor_key)
+        if not isinstance(factor_data, dict) or not factor_data:
+            self.handle_config_error(KeyError(factor_key))
+
         # Calculate the sum of all factor values
-        factors_sum: int = sum(self.args[factor_key].values())
+        try:
+            factors_sum: float = sum(float(v) for v in factor_data.values())
+        except (TypeError, ValueError) as e:
+            self.handle_config_error(ValueError(f"Invalid factor in '{factor_key}': {e}"))
+
+        if factors_sum <= 0:
+            self.handle_config_error(
+                ValueError(f"Sum of factors in '{factor_key}' must be > 0")
+            )
 
         # Get the total number of rooms based on the size of the enum
         num_rooms = len(list(room_index_enum))
@@ -289,7 +340,17 @@ class SmartHeating(hass.Hass):
 
         # Loop over the enum values to populate the params list with normalized values
         for room in room_index_enum:
-            params[room.value] = self.args[factor_key][room.name.lower()] / factors_sum
+            key = room.name.lower()
+            if key not in factor_data:
+                self.handle_config_error(
+                    KeyError(f"Missing factor '{factor_key}.{key}'")
+                )
+            try:
+                params[room.value] = float(factor_data[key]) / factors_sum
+            except (TypeError, ValueError) as e:
+                self.handle_config_error(
+                    ValueError(f"Invalid factor '{factor_key}.{key}': {e}")
+                )
 
         return params
 
@@ -308,21 +369,24 @@ class SmartHeating(hass.Hass):
             # Load config
             self.init_config()
 
+            # Initialize internal fields
+            self.initialize_internal_fields()
+
             # Initialize the app main loop
             self.start_main_loop()
 
+            # Initialize heartbeat logging
+            self.start_heartbeat()
+
             # Initialize state listeners
             self.setup_state_listeners()
-
-            # Initialize internal fields
-            self.initialize_internal_fields()
 
             # Initialize TemporaryWarmWater
             self.temporary_ww = TemporaryWarmWater(self)
             self.temporary_ww.initialize()
 
             # Log initialization completion
-            self.log("Initialization finished", level="DEBUG")
+            self.log_debug("Initialization finished")
             self.log_config()
 
         except Exception as e:
@@ -334,6 +398,12 @@ class SmartHeating(hass.Hass):
         """Starts the main loop for the app based on cycle time."""
         start_time = self.datetime() + datetime.timedelta(seconds=self.cycle_time)
         self.handle = self.run_every(self.sh_main_loop, start_time, self.cycle_time)
+
+    def start_heartbeat(self) -> None:
+        """Starts a periodic heartbeat log to confirm the app is healthy."""
+        interval = 30 * 60
+        start_time = self.datetime() + datetime.timedelta(seconds=interval)
+        self.heartbeat_handle = self.run_every(self.log_heartbeat, start_time, interval)
 
     def setup_state_listeners(self) -> None:
         """Set up state listeners for all setpoints."""
@@ -355,6 +425,14 @@ class SmartHeating(hass.Hass):
                 self.setpoint_update, input_setpoint, devices=output_setpoints
             )
 
+        flag_entities = [
+            self.HAL_makeWarm_flag,
+            self.HAL_frezzing_flag,
+            self.HAL_forceFlow_flag,
+        ]
+        for flag_entity in flag_entities:
+            self.listen_state(self.flag_update, flag_entity)
+
     def initialize_internal_fields(self) -> None:
         """Initialize the internal state variables for the app."""
         self.thermostat_error = None
@@ -364,30 +442,80 @@ class SmartHeating(hass.Hass):
         self.freezing_flag = None
         self.force_flow_flag = None
         self.radiator_positions = None
-        self.previous_offset = 0
+        self.previous_offset: Optional[float] = None
+        self.previous_thermostat_setpoint: Optional[float] = None
+        self.last_output_offset: Optional[float] = None
+        self.last_output_setpoint: Optional[float] = None
+        self.last_output_reasons: list[str] = []
+        self.last_wam: Optional[float] = None
+        self.last_loop_end: Optional[datetime.datetime] = None
+        self.last_loop_duration: Optional[float] = None
+        self.heartbeat_handle = None
 
     def setpoint_update(
-        self, _: Any, __: Any, ___: Any, new: Any, kwargs: dict[str, Any]
+        self,
+        entity: Any,
+        attribute: Any,
+        old: Any,
+        new: Any,
+        kwargs: dict[str, Any],
     ) -> None:
         """
         Update setpoint values upon state change.
 
         Parameters:
-        - _ (Any): Entity id (unused).
-        - __ (Any): Attribute name (unused).
-        - ___ (Any): Previous state value (unused).
+        - entity (Any): Entity id that triggered the callback.
+        - attribute (Any): Attribute name (unused).
+        - old (Any): Previous state value.
         - new (Any): The new state of the entity.
         - kwargs (dict[str, Any]): Additional arguments, expects 'devices'.
 
         Returns:
         None
         """
-        self.log(f"Setpoint update new:{new} kvargs:{kwargs}", level="DEBUG")
-        # Check if the device is a TRV and update the temperature
-        for device in kwargs["devices"]:
-            self.call_service(
-                "climate/set_temperature", entity_id=device, temperature=new
+        self.log_debug(
+            f"Setpoint update entity:{entity} attr:{attribute} old:{old} new:{new} kvargs:{kwargs}"
+        )
+        if new in (None, "unknown", "unavailable"):
+            self.log(
+                f"Setpoint update ignored due to invalid state for {entity}: {new}",
+                level="ERROR",
             )
+            return
+
+        try:
+            new_value = float(new)
+        except (TypeError, ValueError) as e:
+            self.log(
+                f"Setpoint update ignored due to non-numeric state for {entity} '{new}': {e}",
+                level="ERROR",
+            )
+            return
+
+        devices = kwargs.get("devices", [])
+        if not devices:
+            self.log("Setpoint update missing target devices.", level="ERROR")
+            return
+        # Check if the device is a TRV and update the temperature
+        for device in devices:
+            self.call_service(
+                "climate/set_temperature", entity_id=device, temperature=new_value
+            )
+
+    def flag_update(
+        self, entity: str, attribute: str, old: str, new: str, kwargs: dict[str, Any]
+    ) -> None:
+        """
+        Log transitions for key control flags.
+        """
+        if old in (None, "unknown", "unavailable") and new in (
+            None,
+            "unknown",
+            "unavailable",
+        ):
+            return
+        if old != new:
+            self.log(f"Flag changed: {entity} {old} -> {new}", level="INFO")
 
     def sh_main_loop(self, _: Any) -> None:
         """
@@ -402,6 +530,7 @@ class SmartHeating(hass.Hass):
         Returns:
             None
         """
+        start_time = self.datetime()
         try:
             off_final = 0
 
@@ -410,15 +539,30 @@ class SmartHeating(hass.Hass):
             self.log_input_variables()
 
             # Apply various adjustments to the offset
-            off_final: float = self.calculate_final_offset(off_final)
+            off_final, reasons = self.calculate_final_offset(off_final)
+            off_final_rounded = round(off_final, 1)
 
             # Update TRVs and thermostat offset
             self.sh_update_TRVs()
-            self.sh_update_thermostat(round(off_final, 1))
+            new_setpoint, setpoint_updated = self.sh_update_thermostat(
+                off_final_rounded
+            )
+            self.last_output_offset = off_final_rounded
+            self.last_output_setpoint = new_setpoint
+            self.log_main_output(
+                off_final_rounded, new_setpoint, setpoint_updated, reasons
+            )
         except Exception as e:
             self.handle_hw_error(
                 f"Error in main loop: {str(e)}"
             )  # HW error, safe state
+        finally:
+            end_time = self.datetime()
+            try:
+                self.last_loop_end = end_time
+                self.last_loop_duration = (end_time - start_time).total_seconds()
+            except Exception as e:
+                self.log(f"Failed to record loop timing: {e}", level="ERROR")
 
     def collect_system_values(self) -> None:
         """Collect necessary current values of the system parameters."""
@@ -431,7 +575,7 @@ class SmartHeating(hass.Hass):
         self.force_flow_flag: bool = self.sh_get_force_flow_flag()
         self.radiator_positions: list[float] = self.sh_get_radiator_postions()
 
-    def calculate_final_offset(self, off_final: float) -> float:
+    def calculate_final_offset(self, off_final: float) -> tuple[float, list[str]]:
         """
         Calculate the final offset using different system parameters. Handle HW errors.
 
@@ -439,31 +583,47 @@ class SmartHeating(hass.Hass):
             off_final (float): Current offset value before adjustments.
 
         Returns:
-            float: Updated offset after applying all adjustments.
+            tuple[float, list[str]]: Updated offset and list of reasons applied.
         """
+        reasons: list[str] = []
         # Apply WAM errors
+        before = off_final
         off_final = self.sh_apply_wam_voting(off_final)
-        self.log(f"Offset after WAM: {off_final}", level="DEBUG")
+        if off_final != before:
+            reasons.append("wam")
+        self.log_debug(f"Offset after WAM: {off_final}")
 
         # Apply warm flag
+        before = off_final
         off_final = self.sh_apply_warm_flag(off_final)
-        self.log(f"Offset after warm flag: {off_final}", level="DEBUG")
+        if off_final != before:
+            reasons.append("warm_flag")
+        self.log_debug(f"Offset after warm flag: {off_final}")
 
         # Apply weather forecast
+        before = off_final
         off_final = self.sh_apply_weather_forecast(off_final)
-        self.log(f"Offset after weather forecast: {off_final}", level="DEBUG")
+        if off_final != before:
+            reasons.append("freezing_flag")
+        self.log_debug(f"Offset after weather forecast: {off_final}")
 
         # Check forced burn
+        before = off_final
         off_final = self.sh_check_forced_burn(off_final)
-        self.log(f"Offset after forced burn check: {off_final}", level="DEBUG")
+        if off_final != before:
+            reasons.append("forced_burn")
+        self.log_debug(f"Offset after forced burn check: {off_final}")
 
         # Check force flow for safety priority
+        before = off_final
         off_final = self.sh_force_flow_for_safety_prio(off_final)
-        self.log(
-            f"Offset after force flow for safety priority: {off_final}",
-            level="DEBUG",
+        if off_final != before:
+            reasons.append("force_flow")
+        self.log_debug(
+            f"Offset after force flow for safety priority: {off_final}"
         )
-        return off_final
+        self.last_output_reasons = reasons
+        return off_final, reasons
 
     def log_input_variables(self) -> None:
         """
@@ -482,13 +642,69 @@ class SmartHeating(hass.Hass):
 
         for var in variables:
             try:
-                self.log(f"Variable: {var}: {getattr(self, var)}", level="DEBUG")
+                self.log_debug(f"Variable: {var}: {getattr(self, var)}")
             except AttributeError:
                 self.log(f"Variable {var} not found!", level="ERROR")
             except Exception as e:
                 self.log(
                     f"An error occurred while logging {var}: {str(e)}", level="ERROR"
                 )
+
+    def log_main_output(
+        self,
+        offset: float,
+        new_setpoint: float,
+        setpoint_updated: bool,
+        reasons: list[str],
+    ) -> None:
+        """
+        Log a single INFO summary when outputs change to reduce log noise.
+        """
+        offset_changed = self.previous_offset is None or offset != self.previous_offset
+        setpoint_changed = setpoint_updated and (
+            self.previous_thermostat_setpoint is None
+            or new_setpoint != self.previous_thermostat_setpoint
+        )
+        if offset_changed or setpoint_changed:
+            max_rads_error = (
+                max(self.rads_error) if isinstance(self.rads_error, list) else None
+            )
+            reason_text = ",".join(reasons) if reasons else "none"
+            self.log(
+                "Loop output updated: "
+                f"offset={offset}, thermostat_setpoint={new_setpoint}, "
+                f"reason={reason_text}, corridor_setpoint={self.corridor_setpoint}, "
+                f"wam={self.last_wam}, max_rads_error={max_rads_error}, "
+                f"force_flow_flag={self.force_flow_flag}",
+                level="INFO",
+            )
+            self.previous_offset = offset
+            if setpoint_updated:
+                self.previous_thermostat_setpoint = new_setpoint
+
+    def log_heartbeat(self, kwargs: dict[str, Any]) -> None:
+        """
+        Periodic health log to confirm the app is alive.
+        """
+        if self.last_loop_end is None:
+            age_text = "n/a"
+        else:
+            age_text = round(
+                (self.datetime() - self.last_loop_end).total_seconds(), 1
+            )
+        duration_text = (
+            round(self.last_loop_duration, 3)
+            if self.last_loop_duration is not None
+            else "n/a"
+        )
+        self.log(
+            "Heartbeat: "
+            f"last_offset={self.last_output_offset}, "
+            f"last_setpoint={self.last_output_setpoint}, "
+            f"last_reasons={','.join(self.last_output_reasons) if self.last_output_reasons else 'none'}, "
+            f"loop_age_s={age_text}, loop_duration_s={duration_text}",
+            level="INFO",
+        )
 
     # endregion
 
@@ -503,12 +719,11 @@ class SmartHeating(hass.Hass):
         Returns:
             float: Returns the force_flow_offset if conditions are met, otherwise off_final.
         """
-        self.log(
-            f"self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]:{self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]}",
-            level="DEBUG",
+        self.log_debug(
+            f"self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]:{self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]}"
         )
         if self.rads_error[ROOM_INDEX_RAD.BEDROOM.value] > 0:
-            self.log(f"self.force_flow_flag:{self.force_flow_flag}", level="DEBUG")
+            self.log_debug(f"self.force_flow_flag:{self.force_flow_flag}")
             if self.force_flow_flag:
                 return self.force_flow_offset
         return off_final
@@ -537,7 +752,7 @@ class SmartHeating(hass.Hass):
             forced_burn = (
                 sum(max(a, 0) for a in modified_rads_error) * self.rads_error_factor
             )
-            self.log(f"Forced_burn {forced_burn} ", level="DEBUG")
+            self.log_debug(f"Forced_burn {forced_burn} ")
             return off_final + forced_burn  # Add the forced burn to the final offset
         else:
             return off_final  # Conditions not met, return the original offset
@@ -582,6 +797,14 @@ class SmartHeating(hass.Hass):
         """
         # Calculate WAM
         wam: float = round(self.sh_wam(self.wam_errors, self.wam_params), 2)
+        if wam != wam:
+            self.log(
+                "WAM calculation returned NaN. Check factor configuration and inputs.",
+                level="ERROR",
+            )
+            self.handle_hw_error("WAM calculation returned NaN.")
+            return off_final
+        self.last_wam = wam
         self.sh_set_internal_wam_value(wam)
         return off_final + wam
 
@@ -617,7 +840,7 @@ class SmartHeating(hass.Hass):
                 entity_id=f"climate.{trv.name.lower()}_TRV",
                 preset_mode="boost",
             )
-            self.log(f"Forcing boost for {trv.name.lower()}", level="DEBUG")
+            self.log_debug(f"Forcing boost for {trv.name.lower()}")
 
     def update_multiple_trvs(
         self, room: ROOM_INDEX_RAD, trvs: tuple[TRV_INDEX, TRV_INDEX]
@@ -632,7 +855,7 @@ class SmartHeating(hass.Hass):
         for trv in trvs:
             self.update_trv(room, trv)
 
-    def sh_update_thermostat(self, off_final: float) -> None:
+    def sh_update_thermostat(self, off_final: float) -> tuple[float, bool]:
         """
         Update the thermostat setpoint based on the corridor setpoint and a provided offset,
         if the difference between the current thermostat setpoint and the new one is greater than
@@ -642,15 +865,14 @@ class SmartHeating(hass.Hass):
             off_final (float): The offset to be added to the corridor setpoint to calculate the new thermostat setpoint.
 
         Returns:
-            None
+            tuple[float, bool]: The calculated thermostat setpoint and whether it was updated.
         """
         self.sh_set_internal_setpoint_offset(off_final)
         new_thermostat_setpoint: float = (
             self.corridor_setpoint - self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value]
         ) + off_final
-        self.log(
-            f"Updating thermostat,\n\tcorridor_t {(self.corridor_setpoint - self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value])}\n\tcorridor_setpoint {self.corridor_setpoint}\n\toff_final: {off_final}\n\tthermostat_setpoint: {self.thermostat_setpoint}\n\tnew_thermostat_setpoint: {new_thermostat_setpoint}",
-            level="DEBUG",
+        self.log_debug(
+            f"Updating thermostat,\n\tcorridor_t {(self.corridor_setpoint - self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value])}\n\tcorridor_setpoint {self.corridor_setpoint}\n\toff_final: {off_final}\n\tthermostat_setpoint: {self.thermostat_setpoint}\n\tnew_thermostat_setpoint: {new_thermostat_setpoint}"
         )
         # Check if error is higher that update threshold
         if (
@@ -658,14 +880,17 @@ class SmartHeating(hass.Hass):
             >= self.error_offset_update_threshold
         ):
             self.sh_set_thermostat_setpoint(new_thermostat_setpoint)
+            return new_thermostat_setpoint, True
+        return new_thermostat_setpoint, False
 
     def sh_get_radiator_postions(self) -> list[float]:
         """Retrieve the position values of different radiators from the HAL."""
-        ret_array = [
-            self.get_state(getattr(self, f"HAL_TRV_{trv.name.lower()}_pos"))
+        return [
+            self.sh_get_value(
+                getattr(self, f"HAL_TRV_{trv.name.lower()}_pos"), DEFAULT_RAD_POS
+            )
             for trv in TRV_INDEX
         ]
-        return [self.safe_float_convert(i, DEFAULT_RAD_POS) for i in ret_array]
 
     def sh_wam(self, temperatures: list[float], weights: list[float]) -> float:
         """
@@ -695,9 +920,8 @@ class SmartHeating(hass.Hass):
             List[float]: A list of thermostat errors corresponding to different rooms.
         """
         return [
-            self.safe_float_convert(
-                self.get_state(getattr(self, f"HAL_{room.name.lower()}_tError")),
-                DEFAULT_WAM_ERROR,
+            self.sh_get_value(
+                getattr(self, f"HAL_{room.name.lower()}_tError"), DEFAULT_WAM_ERROR
             )
             for room in ROOM_INDEX_FH
         ]
@@ -710,9 +934,8 @@ class SmartHeating(hass.Hass):
             List[float]: A list of radiator errors corresponding to different rooms.
         """
         return [
-            self.safe_float_convert(
-                self.get_state(getattr(self, f"HAL_{room.name.lower()}_tError")),
-                DEAFULT_RAD_ERR,
+            self.sh_get_value(
+                getattr(self, f"HAL_{room.name.lower()}_tError"), DEAFULT_RAD_ERR
             )
             for room in ROOM_INDEX_RAD
         ]
@@ -732,7 +955,18 @@ class SmartHeating(hass.Hass):
         Returns:
             float: The state value as a float or the default value if conversion fails.
         """
-        return self.safe_float_convert(self.get_state(hal_entity), default_value)
+        if not hal_entity:
+            self.log("HAL entity is missing for value lookup.", level="ERROR")
+            self.handle_hw_error("HAL entity missing for value lookup.")
+            return default_value
+        state = self.get_state(hal_entity)
+        if state in (None, "unknown", "unavailable"):
+            self.log(
+                f"HAL state invalid for '{hal_entity}': {state}",
+                level="ERROR",
+            )
+            return default_value
+        return self.safe_float_convert(state, default_value)
 
     def sh_get_flag_value(self, flag_entity: str) -> bool:
         """
@@ -744,7 +978,18 @@ class SmartHeating(hass.Hass):
         Returns:
             bool: True if the flag is 'on', False otherwise.
         """
-        return self.get_state(flag_entity) == "on"
+        if not flag_entity:
+            self.log("HAL entity is missing for flag lookup.", level="ERROR")
+            self.handle_hw_error("HAL entity missing for flag lookup.")
+            return False
+        state = self.get_state(flag_entity)
+        if state in (None, "unknown", "unavailable"):
+            self.log(
+                f"HAL state invalid for '{flag_entity}': {state}",
+                level="ERROR",
+            )
+            return False
+        return state == "on"
 
     def sh_get_offset_flag(self, flag_entity: str, offset_value: int) -> int:
         """
@@ -770,13 +1015,25 @@ class SmartHeating(hass.Hass):
             value (float): The value to set.
             min_value (float, optional): If provided, ensures the value is at least this value.
         """
+        if not entity:
+            self.log("HAL entity is missing for set operation.", level="ERROR")
+            self.handle_hw_error("HAL entity missing for set operation.")
+            return
+
         if min_value is not None:
             value = max(min_value, value)
 
-        if "input" in entity:
+        domain = entity.split(".")[0] if "." in entity else ""
+        if domain == "input_number":
             self.call_service("input_number/set_value", entity_id=entity, value=value)
-        else:
+        elif domain == "number":
             self.call_service("number/set_value", entity_id=entity, value=value)
+        else:
+            self.log(
+                f"Unsupported entity domain for set_value: '{entity}'",
+                level="ERROR",
+            )
+            self.handle_hw_error(f"Unsupported entity domain for set_value: '{entity}'")
 
     def sh_get_offset_frezzing_flag(self) -> int:
         """Get the offset for the freezing flag."""
@@ -838,6 +1095,15 @@ class SmartHeating(hass.Hass):
     # endregion
 
     # region utilites
+    def log_debug(self, message: str) -> None:
+        """
+        Log debug messages using AppDaemon's logging API.
+
+        Args:
+            message (str): Message to log.
+        """
+        self.log(message, level="DEBUG")
+
     def safe_float_convert(self, value: Any, default: Optional[float] = None) -> float:
         """
         Attempts to convert a string to a float. If the conversion fails,
@@ -907,8 +1173,18 @@ class SmartHeating(hass.Hass):
         Placeholder method to enter a safe state.
         Add logic here to stop critical processes and prevent damage.
         """
-        # Implementation to stop critical processes
-        pass  # For now, this is a placeholder. In reality, you'd implement specific safe state actions.
+        # Stop the main loop to prevent repeated faulty actions.
+        try:
+            if hasattr(self, "handle") and self.handle:
+                self.cancel_timer(self.handle)
+                self.handle = None
+                self.log("Safe state: main loop timer cancelled.", level="ERROR")
+            if hasattr(self, "heartbeat_handle") and self.heartbeat_handle:
+                self.cancel_timer(self.heartbeat_handle)
+                self.heartbeat_handle = None
+                self.log("Safe state: heartbeat timer cancelled.", level="ERROR")
+        except Exception as e:
+            self.log(f"Safe state: failed to cancel timer: {e}", level="ERROR")
 
     # endregion
 

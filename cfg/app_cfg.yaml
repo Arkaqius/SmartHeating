@@ -26,7 +26,6 @@ HeaterController:
     cycle_time: 5 #[s]
     warm_flag_offset: 0.5
     frezzing_flag_offset: 0.5
-    logging: True
     error_offset_update_threshold: 0.5
     force_flow_off: 4
     radiator_boost_threshold: 25
