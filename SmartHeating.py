@@ -4,7 +4,7 @@ Smart heating AppDeamon application.
 
 import datetime
 import traceback
-from typing import Optional
+from typing import Any, Optional
 from math import nan
 from enum import Enum
 import appdaemon.plugins.hass.hassapi as hass
@@ -187,21 +187,45 @@ class SmartHeating(hass.Hass):
             ],
         )
 
-    def get_config_value(self, key: str, section: str, default=None):
-        """Helper to fetch config values with a default fallback."""
+    def get_config_value(self, key: str, section: str, default: Any = None) -> Any:
+        """
+        Helper to fetch config values with a default fallback.
+
+        Args:
+            key (str): Config key to read from args.
+            section (str): Config section within args.
+            default (Any): Fallback value when the key is missing.
+
+        Returns:
+            Any: The resolved config value or the default.
+        """
         return self.args.get(section, {}).get(key, default)
 
-    def handle_config_error(self, error) -> None:
-        """Handle configuration error by logging and stopping the app."""
+    def handle_config_error(self, error: Exception) -> None:
+        """
+        Handle configuration error by logging and stopping the app.
+
+        Args:
+            error (Exception): Exception raised while reading config.
+        """
         self.log(f"Configuration Error: Missing key {str(error)}", level="ERROR")
         self.stop_app("HeaterController")
 
-    def load_hal_mappings(self, section: str, mappings: list) -> None:
-        """Helper to load HAL mappings from args into class attributes."""
+    def load_hal_mappings(self, section: str, mappings: list[tuple[str, str]]) -> None:
+        """
+        Helper to load HAL mappings from args into class attributes.
+
+        Args:
+            section (str): Args section containing the mappings.
+            mappings (list[tuple[str, str]]): (key, attribute_name) pairs to load.
+        """
         for key, attribute in mappings:
             setattr(self, attribute, self.args.get(section, {}).get(key))
 
     def log_config(self) -> None:
+        """
+        Log the active configuration values for debugging.
+        """
         config_items: list[str] = [
             "cycle_time",
             "warm_flag_offset",
@@ -242,14 +266,14 @@ class SmartHeating(hass.Hass):
         return rads_params
 
     def init_params_from_args(
-        self, factor_key: str, room_index_enum: Enum
+        self, factor_key: str, room_index_enum: type[Enum]
     ) -> list[float]:
         """
         Generic method to initialize normalized factors from the args.
 
         Parameters:
         - factor_key (str): The key in the args dictionary to retrieve factors.
-        - room_index_enum (Enum): Enum defining room indices.
+        - room_index_enum (type[Enum]): Enum class defining room indices.
 
         Returns:
         List[float]: A list of normalized factors.
@@ -342,13 +366,18 @@ class SmartHeating(hass.Hass):
         self.radiator_positions = None
         self.previous_offset = 0
 
-    def setpoint_update(self, _, __, ___, new, kwargs):
+    def setpoint_update(
+        self, _: Any, __: Any, ___: Any, new: Any, kwargs: dict[str, Any]
+    ) -> None:
         """
         Update setpoint values upon state change.
 
         Parameters:
-        - new (str): The new state of the entity.
-        - kwargs (dict): Additional arguments, expects 'devices'.
+        - _ (Any): Entity id (unused).
+        - __ (Any): Attribute name (unused).
+        - ___ (Any): Previous state value (unused).
+        - new (Any): The new state of the entity.
+        - kwargs (dict[str, Any]): Additional arguments, expects 'devices'.
 
         Returns:
         None
@@ -360,12 +389,15 @@ class SmartHeating(hass.Hass):
                 "climate/set_temperature", entity_id=device, temperature=new
             )
 
-    def sh_main_loop(self, _) -> None:
+    def sh_main_loop(self, _: Any) -> None:
         """
         Main smart heating event loop which orchestrates the logic for managing the heating system.
 
         This function manages various system flags, calculates offsets using system parameters,
         and ensures optimal performance and safety of the heating system.
+
+        Args:
+            _ (Any): Scheduler callback argument (unused).
 
         Returns:
             None
@@ -402,6 +434,12 @@ class SmartHeating(hass.Hass):
     def calculate_final_offset(self, off_final: float) -> float:
         """
         Calculate the final offset using different system parameters. Handle HW errors.
+
+        Args:
+            off_final (float): Current offset value before adjustments.
+
+        Returns:
+            float: Updated offset after applying all adjustments.
         """
         # Apply WAM errors
         off_final = self.sh_apply_wam_voting(off_final)
@@ -455,15 +493,15 @@ class SmartHeating(hass.Hass):
     # endregion
 
     # region SmartHeating logic functions
-    def sh_force_flow_for_safety_prio(self, off_final) -> float:
+    def sh_force_flow_for_safety_prio(self, off_final: float) -> float:
         """
         Ensure safety priority by enforcing flow if necessary, based on radiator errors and flag state.
 
         Parameters:
-            _ (Any): Unused parameter. Can be of any type.
+            off_final (float): Current offset value before safety adjustments.
 
         Returns:
-            float: Returns the force_flow_offset if conditions are met, otherwise 0.
+            float: Returns the force_flow_offset if conditions are met, otherwise off_final.
         """
         self.log(
             f"self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]:{self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]}",
@@ -563,7 +601,13 @@ class SmartHeating(hass.Hass):
                 self.update_trv(room, trv)
 
     def update_trv(self, room: ROOM_INDEX_RAD, trv: TRV_INDEX) -> None:
-        """Update a single TRV based on room error and position."""
+        """
+        Update a single TRV based on room error and position.
+
+        Args:
+            room (ROOM_INDEX_RAD): Room identifier for the radiator error lookup.
+            trv (TRV_INDEX): TRV valve identifier to update.
+        """
         if (
             self.rads_error[room.value] > 0.5
             and self.radiator_positions[trv.value] < self.radiator_boost_threshold
@@ -578,7 +622,13 @@ class SmartHeating(hass.Hass):
     def update_multiple_trvs(
         self, room: ROOM_INDEX_RAD, trvs: tuple[TRV_INDEX, TRV_INDEX]
     ) -> None:
-        """Update multiple TRVs (like bedroom with left and right TRVs)."""
+        """
+        Update multiple TRVs (like bedroom with left and right TRVs).
+
+        Args:
+            room (ROOM_INDEX_RAD): Room identifier for the radiator error lookup.
+            trvs (tuple[TRV_INDEX, TRV_INDEX]): TRV valves to update.
+        """
         for trv in trvs:
             self.update_trv(room, trv)
 
@@ -709,7 +759,9 @@ class SmartHeating(hass.Hass):
         """
         return offset_value if self.sh_get_flag_value(flag_entity) else 0
 
-    def sh_set_value(self, entity: str, value: float, min_value: float = None) -> None:
+    def sh_set_value(
+        self, entity: str, value: float, min_value: Optional[float] = None
+    ) -> None:
         """
         Generic method to set a value in the HAL.
 
@@ -745,15 +797,30 @@ class SmartHeating(hass.Hass):
         return self.sh_get_value(self.HAL_thermostat_setpoint)
 
     def sh_set_thermostat_setpoint(self, value: float) -> None:
-        """Set a new thermostat setpoint in the HAL, ensuring it’s at least 15.0."""
+        """
+        Set a new thermostat setpoint in the HAL, ensuring it is at least 15.0.
+
+        Args:
+            value (float): Desired thermostat setpoint value.
+        """
         self.sh_set_value(self.HAL_thermostat_setpoint, value, min_value=15.0)
 
     def sh_set_internal_wam_value(self, value: float) -> None:
-        """Set the internal WAM value in the HAL."""
+        """
+        Set the internal WAM value in the HAL.
+
+        Args:
+            value (float): WAM value to persist.
+        """
         self.sh_set_value(self.HAL_wam_value, value)
 
     def sh_set_internal_setpoint_offset(self, value: float) -> None:
-        """Set the internal setpoint offset in the HAL."""
+        """
+        Set the internal setpoint offset in the HAL.
+
+        Args:
+            value (float): Setpoint offset to persist.
+        """
         self.sh_set_value(self.HAL_setpoint_offset, value)
 
     def sh_get_freezing_flag(self) -> bool:
@@ -771,15 +838,15 @@ class SmartHeating(hass.Hass):
     # endregion
 
     # region utilites
-    def safe_float_convert(self, value: str, default: Optional[float] = None) -> float:
+    def safe_float_convert(self, value: Any, default: Optional[float] = None) -> float:
         """
         Attempts to convert a string to a float. If the conversion fails,
         logs a warning and returns a default value, or raises a hardware error if no valid default is provided.
 
         Args:
-            value (str): The string value to be converted to float.
+            value (Any): The value to be converted to float.
             default (float, optional): The default value to return in case of conversion failure. If None is passed,
-                                    hardware error is raised.
+                hardware error is raised.
 
         Returns:
             float: The converted float value or the default value if conversion fails.
@@ -851,14 +918,15 @@ class TemporaryWarmWater:
     TemporaryWarmWater - Handles warm water activation using an input_boolean.
     """
 
-    def __init__(self, hass_instance):
+    def __init__(self, hass_instance: hass.Hass) -> None:
         """
         Initialize the class with the AppDaemon hass instance.
+
         Args:
-            hass_instance: Main AppDaemon instance to call services.
+            hass_instance (hass.Hass): Main AppDaemon instance to call services.
         """
         self.hass = hass_instance
-        self.timer_handle = None  # Handle for managing the timer
+        self.timer_handle: Optional[Any] = None  # Handle for managing the timer
 
     def initialize(self) -> None:
         """
@@ -883,11 +951,25 @@ class TemporaryWarmWater:
             "TemporaryWarmWater initialized with input_boolean.", level="INFO"
         )
 
-    def handle_input_boolean_change(self, entity, attribute, old, new, kwargs) -> None:
+    def handle_input_boolean_change(
+        self,
+        entity: str,
+        attribute: str,
+        old: str,
+        new: str,
+        kwargs: dict[str, Any],
+    ) -> None:
         """
         Handle state changes of input_boolean.temporary_ww:
         - Turn ON warm water for 15 minutes if set to 'on'.
         - Turn OFF warm water immediately if set to 'off'.
+
+        Args:
+            entity (str): Entity id that triggered the callback.
+            attribute (str): Attribute that changed.
+            old (str): Previous state value.
+            new (str): New state value.
+            kwargs (dict[str, Any]): Callback keyword arguments.
         """
         if old == "off" and new == "on":
             self.hass.log(
@@ -917,9 +999,12 @@ class TemporaryWarmWater:
             # Turn off warm water
             self.turn_off_warm_water({})
 
-    def turn_off_warm_water(self, kwargs) -> None:
+    def turn_off_warm_water(self, kwargs: dict[str, Any]) -> None:
         """
         Turn off the warm water state.
+
+        Args:
+            kwargs (dict[str, Any]): Callback keyword arguments (unused).
         """
         self.hass.call_service(
             "input_boolean/turn_off", entity_id="input_boolean.ww_state"
