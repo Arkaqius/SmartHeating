@@ -71,9 +71,7 @@ class TemporaryWarmWater:
             )
 
             # Turn on warm water
-            self.hass.call_service(
-                "input_boolean/turn_on", entity_id="input_boolean.ww_state"
-            )
+            # Will be done by UX autoamtion in HA
 
             # Start a 15-minute timer
             if self.timer_handle:
