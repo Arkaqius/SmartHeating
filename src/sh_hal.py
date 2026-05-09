@@ -4,6 +4,8 @@ HAL access helpers for SmartHeating.
 
 from typing import Any, Optional
 
+from sh_types import DEFAULT_ROOM_TEMPERATURE
+
 
 class HalMixin:
     """
@@ -45,8 +47,6 @@ class HalMixin:
             bool: True if the flag is 'on', False otherwise.
         """
         if not flag_entity:
-            self.log("HAL entity is missing for flag lookup.", level="ERROR")
-            self.handle_hw_error("HAL entity missing for flag lookup.")
             return False
         state = self.get_state(flag_entity)
         if state in (None, "unknown", "unavailable"):
@@ -90,9 +90,7 @@ class HalMixin:
             value = max(min_value, value)
 
         domain = entity.split(".")[0] if "." in entity else ""
-        if domain == "input_number":
-            self.call_service("input_number/set_value", entity_id=entity, value=value)
-        elif domain == "number":
+        if domain == "number":
             self.call_service("number/set_value", entity_id=entity, value=value)
         else:
             self.log(
@@ -109,11 +107,11 @@ class HalMixin:
 
     def sh_get_offset_warm_flag(self) -> int:
         """Get the offset for the warm flag."""
-        return self.sh_get_offset_flag(self.HAL_makeWarm_flag, self.warm_flag_offset)
+        return self.warm_flag_offset if self.sh_get_warm_flag() else 0
 
     def sh_get_corridor_setpoint(self) -> float:
         """Retrieve the corridor setpoint from the HAL."""
-        return self.sh_get_value(self.HAL_corridor_setpoint)
+        return self.get_room_setpoint("corridor")
 
     def sh_get_thermostat_setpoint(self) -> float:
         """Retrieve the corridor setpoint from the HAL."""
@@ -128,35 +126,17 @@ class HalMixin:
         """
         self.sh_set_value(self.HAL_thermostat_setpoint, value, min_value=15.0)
 
-    def sh_set_internal_wam_value(self, value: float) -> None:
-        """
-        Set the internal WAM value in the HAL.
-
-        Args:
-            value (float): WAM value to persist.
-        """
-        self.sh_set_value(self.HAL_wam_value, value)
-
-    def sh_set_internal_setpoint_offset(self, value: float) -> None:
-        """
-        Set the internal setpoint offset in the HAL.
-
-        Args:
-            value (float): Setpoint offset to persist.
-        """
-        self.sh_set_value(self.HAL_setpoint_offset, value)
-
     def sh_get_freezing_flag(self) -> bool:
         """Retrieve the state of the freezing flag."""
         return self.sh_get_flag_value(self.HAL_frezzing_flag)
 
     def sh_get_warm_flag(self) -> bool:
         """Retrieve the state of the warm flag."""
-        return self.sh_get_flag_value(self.HAL_makeWarm_flag)
+        return self.control_flags.get("warm_flag", False)
 
     def sh_get_force_flow_flag(self) -> bool:
         """Retrieve the state of the force flow flag."""
-        return self.sh_get_flag_value(self.HAL_forceFlow_flag)
+        return self.control_flags.get("force_flow_safety_rooms", False)
 
     def safe_float_convert(self, value: Any, default: Optional[float] = None) -> float:
         """
@@ -191,3 +171,28 @@ class HalMixin:
                 raise ValueError(
                     f"Failed to convert '{value}' to float, no valid default provided."
                 )
+
+    def sh_get_room_temperature(self, room_name: str) -> float:
+        """
+        Retrieve a raw room temperature by room key.
+        """
+        entity = self.room_temperature_entities.get(room_name)
+        default = self.get_room_setpoint(room_name) if self.room_setpoints else (
+            DEFAULT_ROOM_TEMPERATURE
+        )
+        if not entity:
+            self.log(f"Missing room temperature entity for {room_name}", level="ERROR")
+            self.handle_hw_error(f"Missing room temperature entity for {room_name}")
+            return default
+        return self.sh_get_value(entity, default)
+
+    def sh_get_room_error(self, room_name: str) -> float:
+        """
+        Calculate target minus current room temperature.
+        """
+        if self.room_hvac_modes.get(room_name, "heat") == "off":
+            return 0.0
+        return round(
+            self.get_room_setpoint(room_name) - self.sh_get_room_temperature(room_name),
+            2,
+        )

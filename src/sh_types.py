@@ -2,14 +2,28 @@
 Shared types and constants for SmartHeating.
 """
 
+from dataclasses import dataclass
 from enum import Enum
 
 
-# DEFAULT VALUES FOR FLOAT()
-DEFAULT_COR_TERROR = 0.0
 DEFAULT_RAD_POS = 50.0
-DEFAULT_WAM_ERROR = 0.0
-DEAFULT_RAD_ERR = 0.0
+DEFAULT_ROOM_SETPOINT = 20.0
+DEFAULT_ROOM_TEMPERATURE = 20.0
+
+
+DEFAULT_ROOM_FRIENDLY_NAMES = {
+    "livingroom": "Salon",
+    "corridor": "Korytarz",
+    "bathroom": "Łazienka",
+    "entrance": "Wiatrołap",
+    "upper_corridor": "Korytarz górny",
+    "wardrobe": "Garderoba",
+    "upper_bathroom": "Łazienka górna",
+    "office": "Biuro",
+    "kidsroom": "Pokój dzieci",
+    "bedroom": "Sypialnia",
+    "garage": "Garaż",
+}
 
 
 class ROOM_INDEX_FH(Enum):
@@ -47,3 +61,16 @@ class TRV_INDEX(Enum):
     BEDROOM_LEFT = 2
     BEDROOM_RIGHT = 3
     GARAGE = 4
+
+
+@dataclass(frozen=True)
+class MqttClimateRoom:
+    """
+    Runtime description of a SmartHeating managed MQTT climate.
+    """
+
+    room: str
+    friendly_name: str
+    climate_entity: str
+    temperature_entity: str
+    trv_entities: tuple[str, ...]

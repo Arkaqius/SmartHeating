@@ -6,8 +6,6 @@ from math import nan
 
 from sh_types import (
     DEFAULT_RAD_POS,
-    DEFAULT_WAM_ERROR,
-    DEAFULT_RAD_ERR,
     ROOM_INDEX_FH,
     ROOM_INDEX_RAD,
     TRV_INDEX,
@@ -79,12 +77,15 @@ class LogicMixin:
         Returns:
             float: Returns the force_flow_offset if conditions are met, otherwise off_final.
         """
+        self.last_force_flow_safety_active = False
+        self.last_safety_room_error = self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]
         self.log_debug(
             f"self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]:{self.rads_error[ROOM_INDEX_RAD.BEDROOM.value]}"
         )
         if self.rads_error[ROOM_INDEX_RAD.BEDROOM.value] > 0:
             self.log_debug(f"self.force_flow_flag:{self.force_flow_flag}")
             if self.force_flow_flag:
+                self.last_force_flow_safety_active = True
                 return self.force_flow_offset
         return off_final
 
@@ -98,6 +99,8 @@ class LogicMixin:
         Returns:
             float: Calculated forced burn value or 0 if conditions are not met.
         """
+        self.last_forced_burn_offset = 0.0
+        self.last_forced_burn_active = False
         # Check if any radiator error exceeds the threshold
         if (self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value] + off_final) < 0 and any(
             a > self.force_burn_thres for a in self.rads_error
@@ -112,6 +115,8 @@ class LogicMixin:
             forced_burn = (
                 sum(max(a, 0) for a in modified_rads_error) * self.rads_error_factor
             )
+            self.last_forced_burn_offset = forced_burn
+            self.last_forced_burn_active = forced_burn > 0
             self.log_debug(f"Forced_burn {forced_burn} ")
             return off_final + forced_burn  # Add the forced burn to the final offset
         else:
@@ -165,7 +170,6 @@ class LogicMixin:
             self.handle_hw_error("WAM calculation returned NaN.")
             return off_final
         self.last_wam = wam
-        self.sh_set_internal_wam_value(wam)
         return off_final + wam
 
     def sh_update_TRVs(self) -> None:
@@ -195,9 +199,16 @@ class LogicMixin:
             self.rads_error[room.value] > 0.5
             and self.radiator_positions[trv.value] < self.radiator_boost_threshold
         ):
+            trv_entity = self.trv_climate_entities_by_trv.get(trv.name.lower())
+            if not trv_entity:
+                self.log(
+                    f"No TRV climate entity configured for {trv.name.lower()}",
+                    level="ERROR",
+                )
+                return
             self.call_service(
                 "climate/set_preset_mode",
-                entity_id=f"climate.{trv.name.lower()}_TRV",
+                entity_id=trv_entity,
                 preset_mode="boost",
             )
             self.log_debug(f"Forcing boost for {trv.name.lower()}")
@@ -227,12 +238,9 @@ class LogicMixin:
         Returns:
             tuple[float, bool]: The calculated thermostat setpoint and whether it was updated.
         """
-        self.sh_set_internal_setpoint_offset(off_final)
-        new_thermostat_setpoint: float = (
-            self.corridor_setpoint - self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value]
-        ) + off_final
+        new_thermostat_setpoint: float = self.corridor_temperature + off_final
         self.log_debug(
-            f"Updating thermostat,\n\tcorridor_t {(self.corridor_setpoint - self.wam_errors[ROOM_INDEX_FH.CORRIDOR.value])}\n\tcorridor_setpoint {self.corridor_setpoint}\n\toff_final: {off_final}\n\tthermostat_setpoint: {self.thermostat_setpoint}\n\tnew_thermostat_setpoint: {new_thermostat_setpoint}"
+            f"Updating thermostat,\n\tcorridor_t {self.corridor_temperature}\n\tcorridor_setpoint {self.corridor_setpoint}\n\toff_final: {off_final}\n\tthermostat_setpoint: {self.thermostat_setpoint}\n\tnew_thermostat_setpoint: {new_thermostat_setpoint}"
         )
         # Check if error is higher that update threshold
         if (
@@ -279,12 +287,7 @@ class LogicMixin:
         Returns:
             List[float]: A list of thermostat errors corresponding to different rooms.
         """
-        return [
-            self.sh_get_value(
-                getattr(self, f"HAL_{room.name.lower()}_tError"), DEFAULT_WAM_ERROR
-            )
-            for room in ROOM_INDEX_FH
-        ]
+        return [self.sh_get_room_error(room.name.lower()) for room in ROOM_INDEX_FH]
 
     def sh_get_rad_errors(self) -> list[float]:
         """
@@ -293,9 +296,4 @@ class LogicMixin:
         Returns:
             List[float]: A list of radiator errors corresponding to different rooms.
         """
-        return [
-            self.sh_get_value(
-                getattr(self, f"HAL_{room.name.lower()}_tError"), DEAFULT_RAD_ERR
-            )
-            for room in ROOM_INDEX_RAD
-        ]
+        return [self.sh_get_room_error(room.name.lower()) for room in ROOM_INDEX_RAD]
