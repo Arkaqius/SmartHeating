@@ -146,13 +146,15 @@ class MqttClimateMixin:
         """
         Return the required AppDaemon MQTT plugin API.
         """
-        for plugin_name in ("MQTT", "mqtt"):
-            try:
-                return self.get_plugin_api(plugin_name)
-            except Exception as e:
-                self.log_debug(
-                    f"MQTT plugin API '{plugin_name}' unavailable: {e}"
-                )
+        health_mqtt_api = getattr(self, "_health_mqtt_api", None)
+        if health_mqtt_api is not None:
+            return health_mqtt_api
+
+        configured_plugin = str(self.args.get("mqtt_plugin", "MQTT"))
+        try:
+            return self.get_plugin_api(configured_plugin)
+        except Exception as e:
+            self.log_debug(f"MQTT plugin API '{configured_plugin}' unavailable: {e}")
 
         self.handle_config_error(
             RuntimeError(
@@ -165,7 +167,8 @@ class MqttClimateMixin:
         Register temperature sensor and setpoint listeners for managed climates.
         """
         for room_name, room in self.mqtt_climate_rooms.items():
-            self.listen_state(
+            self.listen_state_named(
+                f"room_temperature_{room_name}",
                 self.room_temperature_update,
                 room.temperature_entity,
                 room=room_name,
@@ -489,6 +492,10 @@ class MqttClimateMixin:
         """
         Handle MQTT setpoint and mode commands.
         """
+        if getattr(self, "_safe_state_entered", False):
+            self.log_debug("Ignoring MQTT climate command while in safe state.")
+            return
+
         topic = data.get("topic")
         payload = data.get("payload")
         if isinstance(payload, bytes):
@@ -513,6 +520,10 @@ class MqttClimateMixin:
         """
         Handle MQTT switch commands for app-owned control flags.
         """
+        if getattr(self, "_safe_state_entered", False):
+            self.log_debug("Ignoring MQTT control command while in safe state.")
+            return
+
         topic = data.get("topic")
         payload = data.get("payload")
         if isinstance(payload, bytes):

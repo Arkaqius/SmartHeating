@@ -22,6 +22,9 @@ class ConfigMixin:
         self.cycle_time = self.get_config_value(
             "cycle_time", section="config", default=60
         )
+        self.heartbeat_s = int(
+            self.get_config_value("heartbeat_s", section="config", default=1800)
+        )
         self.warm_flag_offset = self.get_config_value(
             "warm_flag_offset", section="config", default=0
         )
@@ -84,6 +87,7 @@ class ConfigMixin:
                 ("thermostat_setpoint", "HAL_thermostat_setpoint"),
             ],
         )
+
     def init_room_config(self) -> None:
         """
         Load mandatory raw room temperature inputs for managed climates.
@@ -320,6 +324,7 @@ class ConfigMixin:
         """
         config_items: list[str] = [
             "cycle_time",
+            "heartbeat_s",
             "warm_flag_offset",
             "frezzying_flag_offset",
             "error_offset_update_threshold",

@@ -3,6 +3,11 @@ HeaterController:
   module: SmartHeating
   class: SmartHeating
   log_level: INFO
+  mqtt_plugin: MQTT
+  mqtt_discovery_prefix: homeassistant
+  mqtt_base_topic: smart_heating/app
+  health_entity_id: sensor.sh_health
+  health_name: Ogrzewanie - stan aplikacji
 
   # WAM Factors
   wam_factors:
@@ -24,6 +29,7 @@ HeaterController:
   # Config
   config:
     cycle_time: 5 #[s]
+    heartbeat_s: 1800
     warm_flag_offset: 0.5
     frezzing_flag_offset: 0.5
     error_offset_update_threshold: 0.5

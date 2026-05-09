@@ -3,10 +3,9 @@ Smart heating AppDeamon application.
 """
 
 import datetime
-import traceback
 from typing import Any, Optional
 
-import appdaemon.plugins.hass.hassapi as hass
+from appdaemon_common import HealthAppBase, init_step
 
 from sh_config import ConfigMixin
 from sh_hal import HalMixin
@@ -23,7 +22,7 @@ Offset bigger than 0 -> bigger flow
 
 
 class SmartHeating(
-    hass.Hass, ConfigMixin, HalMixin, LogicMixin, LoggingMixin, MqttClimateMixin
+    HealthAppBase, ConfigMixin, HalMixin, LogicMixin, LoggingMixin, MqttClimateMixin
 ):
     """
     SmartHeating - An AppDaemon app for intelligent heating control.
@@ -40,52 +39,47 @@ class SmartHeating(
     """
 
     # region AppDeamon functions
-    def initialize(self) -> None:
-        """
-        Initialize the app, set up the main loop, and define state callbacks.
+    @init_step("config", order=10)
+    def init_config_step(self) -> None:
+        """Load config and publish its hash to the health entity."""
+        self.init_config()
+        self.update_health_attrs(config_hash=self.compute_config_hash(self.args))
 
-        - Loads config.
-        - Starts the main loop.
-        - Initializes state listeners and internal fields.
-        """
-        try:
-            # Load config
-            self.init_config()
+    @init_step("runtime_state", order=20)
+    def init_runtime_state_step(self) -> None:
+        """Initialize internal runtime fields."""
+        self.initialize_internal_fields()
 
-            # Initialize internal fields
-            self.initialize_internal_fields()
+    @init_step("mqtt_entities", order=30)
+    def init_mqtt_entities_step(self) -> None:
+        """Initialize app-owned MQTT entities."""
+        self.init_mqtt_climates()
 
-            # Initialize app-owned MQTT climates before the first control cycle
-            self.init_mqtt_climates()
+    @init_step("main_loop", order=40)
+    def init_main_loop_step(self) -> None:
+        """Start the main SmartHeating loop."""
+        self.start_main_loop()
 
-            # Initialize the app main loop
-            self.start_main_loop()
+    @init_step("listeners", order=50)
+    def init_listeners_step(self) -> None:
+        """Register Home Assistant and MQTT listeners."""
+        self.setup_state_listeners()
 
-            # Initialize heartbeat logging
-            self.start_heartbeat()
+    @init_step("heartbeat", order=60)
+    def init_heartbeat_step(self) -> None:
+        """Start standardized AppDaemon common heartbeat."""
+        self.start_heartbeat(self.heartbeat_s)
 
-            # Initialize state listeners
-            self.setup_state_listeners()
-
-            # Log initialization completion
-            self.log_debug("Initialization finished")
-            self.log_config()
-
-        except Exception as e:
-            self.handle_sw_error(
-                "Error during initialization", e
-            )  # SW error, stop the app
+    @init_step("logging", order=70)
+    def init_logging_step(self) -> None:
+        """Log startup details after all init steps have completed."""
+        self.log_debug("Initialization finished")
+        self.log_config()
 
     def start_main_loop(self) -> None:
         """Starts the main loop for the app based on cycle time."""
         start_time = self.datetime() + datetime.timedelta(seconds=self.cycle_time)
-        self.handle = self.run_every(self.sh_main_loop, start_time, self.cycle_time)
-
-    def start_heartbeat(self) -> None:
-        """Starts a periodic heartbeat log to confirm the app is healthy."""
-        interval = 30 * 60
-        start_time = self.datetime() + datetime.timedelta(seconds=interval)
-        self.heartbeat_handle = self.run_every(self.log_heartbeat, start_time, interval)
+        self.schedule_every("main_loop", start_time, self.cycle_time, self.sh_main_loop)
 
     def setup_state_listeners(self) -> None:
         """Set up state listeners for all setpoints."""
@@ -96,7 +90,9 @@ class SmartHeating(
         ]
         for flag_entity in flag_entities:
             if flag_entity:
-                self.listen_state(self.flag_update, flag_entity)
+                self.listen_state_named(
+                    f"flag_{flag_entity}", self.flag_update, flag_entity
+                )
 
     def initialize_internal_fields(self) -> None:
         """Initialize the internal state variables for the app."""
@@ -119,7 +115,6 @@ class SmartHeating(
         self.last_safety_room_error: Optional[float] = None
         self.last_loop_end: Optional[datetime.datetime] = None
         self.last_loop_duration: Optional[float] = None
-        self.heartbeat_handle = None
         self.room_setpoints: dict[str, float] = {}
         self.room_hvac_modes: dict[str, str] = {}
         self.control_flags: dict[str, bool] = {}
@@ -174,6 +169,17 @@ class SmartHeating(
                 self.last_loop_end = end_time
                 self.last_loop_duration = (end_time - start_time).total_seconds()
                 self.publish_mqtt_diagnostic_states()
+                self.update_health_attrs(
+                    last_loop_end=end_time.isoformat(),
+                    last_loop_duration_s=round(self.last_loop_duration, 3),
+                    last_output_offset=self.last_output_offset,
+                    last_output_setpoint=self.last_output_setpoint,
+                    last_output_reasons=(
+                        ",".join(self.last_output_reasons)
+                        if self.last_output_reasons
+                        else "none"
+                    ),
+                )
             except Exception as e:
                 self.log(
                     f"Failed to record or publish loop diagnostics: {e}",
@@ -195,23 +201,6 @@ class SmartHeating(
     # endregion
 
     # region ErrorHandling
-    def handle_sw_error(self, message: str, exception: Exception) -> None:
-        """
-        Handle software errors by logging the exception and stopping the app.
-
-        Parameters:
-            message (str): Custom error message to be logged.
-            exception (Exception): The raised exception object.
-
-        Raises:
-            Exception: Re-raises the exception to fault hard.
-        """
-        self.log(
-            f"SW ERROR: {message}: {str(exception)}\n{traceback.format_exc()}",
-            level="ERROR",
-        )
-        raise exception
-
     def handle_hw_error(self, message: str) -> None:
         """
         Handle system/hardware errors by logging the error and entering a safe state.
@@ -220,24 +209,29 @@ class SmartHeating(
             message (str): Custom error message to be logged.
         """
         self.log(f"HW ERROR: {message}", level="ERROR")
-        self.enter_safe_state()
+        self.enter_safe_state(message, stop_timers=True, stop_listeners=True)
 
-    def enter_safe_state(self) -> None:
-        """
-        Placeholder method to enter a safe state.
-        Add logic here to stop critical processes and prevent damage.
-        """
-        # Stop the main loop to prevent repeated faulty actions.
-        try:
-            if hasattr(self, "handle") and self.handle:
-                self.cancel_timer(self.handle)
-                self.handle = None
-                self.log("Safe state: main loop timer cancelled.", level="ERROR")
-            if hasattr(self, "heartbeat_handle") and self.heartbeat_handle:
-                self.cancel_timer(self.heartbeat_handle)
-                self.heartbeat_handle = None
-                self.log("Safe state: heartbeat timer cancelled.", level="ERROR")
-        except Exception as e:
-            self.log(f"Safe state: failed to cancel timer: {e}", level="ERROR")
+    def on_enter_safe_state(self) -> None:
+        """Publish the latest diagnostics when the app enters safe state."""
+        self.publish_mqtt_diagnostic_states()
+
+    def heartbeat_message(self) -> Optional[str]:
+        """Return SmartHeating-specific heartbeat details for appdaemon_common."""
+        if self.last_loop_end is None:
+            return "last_loop=none"
+        duration = (
+            round(self.last_loop_duration, 3)
+            if self.last_loop_duration is not None
+            else "n/a"
+        )
+        reasons = (
+            ",".join(self.last_output_reasons) if self.last_output_reasons else "none"
+        )
+        return (
+            f"last_offset={self.last_output_offset}, "
+            f"last_setpoint={self.last_output_setpoint}, "
+            f"last_reasons={reasons}, "
+            f"loop_duration_s={duration}"
+        )
 
     # endregion

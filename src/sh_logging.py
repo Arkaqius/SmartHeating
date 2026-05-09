@@ -76,30 +76,6 @@ class LoggingMixin:
             if setpoint_updated:
                 self.previous_thermostat_setpoint = new_setpoint
 
-    def log_heartbeat(self, kwargs: dict[str, Any]) -> None:
-        """
-        Periodic health log to confirm the app is alive.
-        """
-        if self.last_loop_end is None:
-            age_text = "n/a"
-        else:
-            age_text = round(
-                (self.datetime() - self.last_loop_end).total_seconds(), 1
-            )
-        duration_text = (
-            round(self.last_loop_duration, 3)
-            if self.last_loop_duration is not None
-            else "n/a"
-        )
-        self.log(
-            "Heartbeat: "
-            f"last_offset={self.last_output_offset}, "
-            f"last_setpoint={self.last_output_setpoint}, "
-            f"last_reasons={','.join(self.last_output_reasons) if self.last_output_reasons else 'none'}, "
-            f"loop_age_s={age_text}, loop_duration_s={duration_text}",
-            level="INFO",
-        )
-
     def flag_update(
         self, entity: str, attribute: str, old: str, new: str, kwargs: dict[str, Any]
     ) -> None:
