@@ -7,6 +7,7 @@ HeaterController:
   mqtt_discovery_prefix: homeassistant
   mqtt_base_topic: smart_heating/app
   health_entity_id: sensor.sh_health
+  health_unique_id: smart_heating_sh_health
   health_name: Ogrzewanie - stan aplikacji
 
   # WAM Factors
@@ -30,6 +31,7 @@ HeaterController:
   config:
     cycle_time: 5 #[s]
     heartbeat_s: 1800
+    invalid_state_log_interval_s: 900
     warm_flag_offset: 0.5
     frezzing_flag_offset: 0.5
     error_offset_update_threshold: 0.5
@@ -77,16 +79,16 @@ HeaterController:
     office_pos: "sensor.office_trv_position"
     kidsRoom_pos: "sensor.kidsroom_trv_position"
   HAL_room_temperatures:
-    livingroom: "sensor.livingroom_temperature"
-    corridor: "sensor.corridor_temperature"
-    bathroom: "sensor.bathroom_temperature"
-    entrance: "sensor.entrance_temperature"
-    upper_corridor: "sensor.uppercorridor_climatesensor_temperature"
-    wardrobe: "sensor.wardrobe_temperature"
-    upper_bathroom: "sensor.upperbathroom_climatesensor_temperature"
-    office: "sensor.office_temperature"
-    kidsroom: "sensor.kidsroom_temperature"
-    garage: "sensor.garage_temperature"
-    bedroom: "sensor.bedroom_temperature"
+    livingroom: "sensor.salon_temperatura"
+    corridor: "sensor.korytarz_temperatura"
+    bathroom: "sensor.lazienka_temperatura"
+    entrance: "sensor.wiatrolap_temperatura"
+    upper_corridor: "sensor.korytarz_gorny_temperatura"
+    wardrobe: "sensor.garderoba_temperatura"
+    upper_bathroom: "sensor.lazienka_gorna_temperatura"
+    office: "sensor.biuro_temperatura"
+    kidsroom: "sensor.pokoj_dzieci_temperatura"
+    garage: "sensor.garaz_temperatura"
+    bedroom: "sensor.sypialnia_temperatura"
   HAL_output:
     thermostat_setpoint: "number.thermostat_hc1_manual_temperature_2"

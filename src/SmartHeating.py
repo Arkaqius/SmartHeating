@@ -1,4 +1,4 @@
-﻿"""
+"""
 Smart heating AppDeamon application.
 """
 
@@ -118,6 +118,8 @@ class SmartHeating(
         self.room_setpoints: dict[str, float] = {}
         self.room_hvac_modes: dict[str, str] = {}
         self.control_flags: dict[str, bool] = {}
+        self.last_valid_hal_values: dict[str, float] = {}
+        self.invalid_hal_states: dict[str, tuple[str, float]] = {}
         self.mqtt_plugin_api = None
         self.mqtt_command_topics: dict[str, tuple[str, str]] = {}
         self.mqtt_control_command_topics: dict[str, str] = {}
@@ -169,6 +171,9 @@ class SmartHeating(
                 self.last_loop_end = end_time
                 self.last_loop_duration = (end_time - start_time).total_seconds()
                 self.publish_mqtt_diagnostic_states()
+                # A reload can race the old instance's retained "offline" publish.
+                # Refresh availability from the running instance on every cycle.
+                self._publish_health_availability("online")
                 self.update_health_attrs(
                     last_loop_end=end_time.isoformat(),
                     last_loop_duration_s=round(self.last_loop_duration, 3),

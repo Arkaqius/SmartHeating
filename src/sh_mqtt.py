@@ -3,6 +3,7 @@ MQTT discovery and state publishing for SmartHeating managed climates.
 """
 
 import json
+import math
 import re
 from typing import Any, Optional
 
@@ -294,7 +295,9 @@ class MqttClimateMixin:
                 "default_entity_id": entity_id,
                 "icon": meta["icon"],
                 "state_topic": self.mqtt_system_topic(f"diagnostic/{key}/state"),
-                "availability_topic": self.mqtt_system_topic("availability"),
+                "availability_topic": self.mqtt_numeric_diagnostic_availability_topic(
+                    key
+                ),
                 "entity_category": "diagnostic",
                 "state_class": "measurement",
                 "device": self.mqtt_device_info(),
@@ -397,9 +400,21 @@ class MqttClimateMixin:
             "loop_duration": self.last_loop_duration,
         }
         for key, value in numeric_states.items():
+            if not self.is_valid_mqtt_number(value):
+                self.mqtt_publish(
+                    self.mqtt_numeric_diagnostic_availability_topic(key),
+                    "offline",
+                    retain=True,
+                )
+                continue
+            self.mqtt_publish(
+                self.mqtt_numeric_diagnostic_availability_topic(key),
+                "online",
+                retain=True,
+            )
             self.mqtt_publish(
                 self.mqtt_system_topic(f"diagnostic/{key}/state"),
-                self.format_mqtt_optional_number(value),
+                self.format_mqtt_number(value),
                 retain=True,
             )
 
@@ -749,6 +764,10 @@ class MqttClimateMixin:
         """
         return f"{self.mqtt_base_topic}/system/{suffix}"
 
+    def mqtt_numeric_diagnostic_availability_topic(self, key: str) -> str:
+        """Return the availability topic for one numeric diagnostic."""
+        return self.mqtt_system_topic(f"diagnostic/{key}/availability")
+
     def mqtt_device_info(self) -> dict[str, Any]:
         """
         Return common MQTT discovery device metadata.
@@ -797,12 +816,21 @@ class MqttClimateMixin:
         """
         return f"{round(value, 2):.2f}".rstrip("0").rstrip(".")
 
+    def is_valid_mqtt_number(self, value: Any) -> bool:
+        """Return True only for finite numeric MQTT sensor payloads."""
+        if value is None or isinstance(value, bool):
+            return False
+        try:
+            return math.isfinite(float(value))
+        except (TypeError, ValueError):
+            return False
+
     def format_mqtt_optional_number(self, value: Optional[float]) -> str:
         """
         Format optional numeric payloads for MQTT sensors.
         """
-        if value is None:
-            return "unknown"
+        if not self.is_valid_mqtt_number(value):
+            raise ValueError(f"Invalid MQTT numeric value: {value}")
         return self.format_mqtt_number(value)
 
     def parse_mqtt_bool(self, payload: Any) -> Optional[bool]:

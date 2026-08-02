@@ -2,6 +2,7 @@
 HAL access helpers for SmartHeating.
 """
 
+import time
 from typing import Any, Optional
 
 from sh_types import DEFAULT_ROOM_TEMPERATURE
@@ -29,12 +30,22 @@ class HalMixin:
             return default_value
         state = self.get_state(hal_entity)
         if state in (None, "unknown", "unavailable"):
+            self.log_invalid_hal_state(hal_entity, state)
+            return self.last_valid_hal_values.get(hal_entity, default_value)
+
+        try:
+            value = float(state)
+        except (TypeError, ValueError):
+            self.log_invalid_hal_state(hal_entity, state)
+            return self.last_valid_hal_values.get(hal_entity, default_value)
+
+        if hal_entity in self.invalid_hal_states:
             self.log(
-                f"HAL state invalid for '{hal_entity}': {state}",
-                level="ERROR",
+                f"HAL state recovered for '{hal_entity}': {value}", level="INFO"
             )
-            return default_value
-        return self.safe_float_convert(state, default_value)
+            self.invalid_hal_states.pop(hal_entity, None)
+        self.last_valid_hal_values[hal_entity] = value
+        return value
 
     def sh_get_flag_value(self, flag_entity: str) -> bool:
         """
@@ -50,12 +61,38 @@ class HalMixin:
             return False
         state = self.get_state(flag_entity)
         if state in (None, "unknown", "unavailable"):
+            self.log_invalid_hal_state(flag_entity, state)
+            return False
+        if flag_entity in self.invalid_hal_states:
             self.log(
-                f"HAL state invalid for '{flag_entity}': {state}",
+                f"HAL state recovered for '{flag_entity}': {state}", level="INFO"
+            )
+            self.invalid_hal_states.pop(flag_entity, None)
+        return state == "on"
+
+    def log_invalid_hal_state(self, hal_entity: str, state: Any) -> None:
+        """Rate-limit repeated invalid-state messages per entity and state."""
+        now = time.monotonic()
+        state_text = str(state)
+        previous = self.invalid_hal_states.get(hal_entity)
+        interval = max(float(self.invalid_state_log_interval_s), 0.0)
+        should_log = (
+            previous is None
+            or previous[0] != state_text
+            or now - previous[1] >= interval
+        )
+        if should_log:
+            fallback = self.last_valid_hal_values.get(hal_entity)
+            fallback_text = (
+                f"last valid value {fallback}"
+                if fallback is not None
+                else "configured fallback"
+            )
+            self.log(
+                f"HAL state invalid for '{hal_entity}': {state}; using {fallback_text}",
                 level="ERROR",
             )
-            return False
-        return state == "on"
+            self.invalid_hal_states[hal_entity] = (state_text, now)
 
     def sh_get_offset_flag(self, flag_entity: str, offset_value: int) -> int:
         """

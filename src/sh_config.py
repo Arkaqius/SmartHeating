@@ -25,6 +25,11 @@ class ConfigMixin:
         self.heartbeat_s = int(
             self.get_config_value("heartbeat_s", section="config", default=1800)
         )
+        self.invalid_state_log_interval_s = float(
+            self.get_config_value(
+                "invalid_state_log_interval_s", section="config", default=900
+            )
+        )
         self.warm_flag_offset = self.get_config_value(
             "warm_flag_offset", section="config", default=0
         )

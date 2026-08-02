@@ -156,6 +156,7 @@ Each AppDaemon app should clearly define:
 Each AppDaemon app should also define:
 
 - `health_entity_id`: the MQTT discovery sensor used by `HealthAppBase`
+- `health_unique_id`: stable MQTT discovery unique ID for the health sensor
 - `mqtt_plugin`: the AppDaemon MQTT plugin name, usually `MQTT`
 - `heartbeat_s`: heartbeat interval in seconds
 
@@ -206,6 +207,16 @@ For SmartHeating:
 ```text
 sensor.sh_health
 ```
+
+Use a stable explicit unique ID such as:
+
+```yaml
+health_entity_id: sensor.sh_health
+health_unique_id: smart_heating_sh_health
+```
+
+This avoids collisions with older retained MQTT discovery payloads if the health
+entity name is changed later.
 
 SmartHeating also uses the common base for:
 
