@@ -1,0 +1,94 @@
+HeaterController:
+  # App definitions
+  module: SmartHeating
+  class: SmartHeating
+  log_level: INFO
+  mqtt_plugin: MQTT
+  mqtt_discovery_prefix: homeassistant
+  mqtt_base_topic: smart_heating/app
+  health_entity_id: sensor.sh_health
+  health_unique_id: smart_heating_sh_health
+  health_name: Ogrzewanie - stan aplikacji
+
+  # WAM Factors
+  wam_factors:
+    livingroom: 3
+    corridor: 3
+    bathroom: 3
+    entrance: 1
+    upper_corridor: 2
+    wardrobe: 1
+    upper_bathroom: 3
+
+  # Radiator Factors
+  rads_factors:
+    office: 2
+    kidsroom: 8
+    bedroom: 8
+    garage: 1
+
+  # Config
+  config:
+    cycle_time: 5 #[s]
+    heartbeat_s: 1800
+    invalid_state_log_interval_s: 900
+    warm_flag_offset: 0.5
+    frezzing_flag_offset: 0.5
+    error_offset_update_threshold: 0.5
+    force_flow_off: 4
+    radiator_boost_threshold: 25
+    rads_error_factor: 4
+    force_burn_thres: 0
+
+  mqtt_climates:
+    discovery_prefix: homeassistant
+    base_topic: smart_heating
+    entity_prefix: sh
+    min_temp: 5
+    max_temp: 30
+    temp_step: 0.5
+    precision: 0.1
+    temperature_unit: C
+    default_setpoint: 20
+    heat_action_threshold: 0.2
+
+  default_setpoints:
+    livingroom: 18
+    corridor: 19
+    bathroom: 19
+    entrance: 18
+    upper_corridor: 19
+    wardrobe: 18
+    upper_bathroom: 19.5
+    office: 19
+    kidsroom: 20.5
+    bedroom: 22
+    garage: 15
+
+  # HAL
+  HAL_climate_TRVs:
+    office: "climate.office_trv"
+    kidsroom: "climate.kidsroom_trv"
+    bedroom_left: "climate.bedroom_left_trv"
+    bedroom_right: "climate.bedroom_right_trv"
+    garage: "climate.garage_trv"
+  HAL_TRV_pos:
+    garage_pos: "sensor.garage_trv_position"
+    bedroomLeft_pos: "sensor.bedroom_left_trv_position"
+    bedroomRight_pos: "sensor.bedroom_right_trv_position"
+    office_pos: "sensor.office_trv_position"
+    kidsRoom_pos: "sensor.kidsroom_trv_position"
+  HAL_room_temperatures:
+    livingroom: "sensor.salon_temperatura"
+    corridor: "sensor.korytarz_temperatura"
+    bathroom: "sensor.lazienka_temperatura"
+    entrance: "sensor.wiatrolap_temperatura"
+    upper_corridor: "sensor.korytarz_gorny_temperatura"
+    wardrobe: "sensor.garderoba_temperatura"
+    upper_bathroom: "sensor.lazienka_gorna_temperatura"
+    office: "sensor.biuro_temperatura"
+    kidsroom: "sensor.pokoj_dzieci_temperatura"
+    garage: "sensor.garaz_temperatura"
+    bedroom: "sensor.sypialnia_temperatura"
+  HAL_output:
+    thermostat_setpoint: "number.thermostat_hc1_manual_temperature_2"

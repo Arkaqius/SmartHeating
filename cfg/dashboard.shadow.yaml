@@ -1,0 +1,363 @@
+title: SmartHeating2.0
+views:
+- title: Obserwacja
+  path: smartheating-v2
+  icon: mdi:radiator
+  type: sections
+  max_columns: 3
+  sections:
+  - type: grid
+    cards:
+    - type: markdown
+      content: '## SmartHeating2.0 — obserwacja
+
+        Zmiany profilu i celów służą do porównania obliczeń. Sterowanie fizyczne jest
+        zablokowane.'
+  - type: grid
+    cards:
+    - type: entities
+      title: Dom i powrót
+      show_header_toggle: false
+      entities:
+      - entity: select.sh2_profile
+        name: 'Profil: home / away_short / away_long'
+      - entity: text.sh2_arrival
+        name: 'Przyjazd: ISO8601 z przesunięciem UTC'
+      - entity: button.sh2_return_now
+        name: Wracam teraz
+      - entity: switch.sh2_force_flow_safety_rooms
+        name: 'Safety: sypialnia i pokój dziecka'
+      - entity: switch.sh2_warm_flag
+        name: Dogrzanie
+      - entity: sensor.sh2_actual_mode
+        name: Rzeczywisty tryb domu
+      - entity: binary_sensor.sh2_runtime
+        name: Sterownik odpowiada
+  - type: grid
+    cards:
+    - type: markdown
+      content: 'Away krótkie obniża cele podłogówki o0,5°C, grzejników o1°C. Away
+        wyjazdowe ogranicza je do18°C i17°C. Garaż zachowuje harmonogram.
+
+
+        Termin wpisz np. `2026-10-25T18:00:00+01:00`. Puste pole anuluje termin. Oszacowanie
+        gotowości nie jest gwarancją osiągnięcia celu.'
+  - type: grid
+    cards:
+    - type: entities
+      title: Decyzja i potwierdzenie nastawy
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_total_wam
+        name: WAM
+      - entity: sensor.sh2_output_offset
+        name: Korekta po ograniczeniach
+      - entity: sensor.sh2_output_setpoint
+        name: Żądana nastawa CW400
+      - entity: sensor.sh2_confirmed_setpoint
+        name: Odczytana nastawa CW400
+      - entity: sensor.sh2_command_status
+        name: Potwierdzenie polecenia
+      - entity: sensor.sh2_output_reasons
+        name: Powody decyzji
+  - type: grid
+    cards:
+    - type: heading
+      heading: Salon
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_livingroom
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Salon
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_livingroom_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_livingroom_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_livingroom_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Korytarz
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_corridor
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Korytarz
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_corridor_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_corridor_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_corridor_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Łazienka
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_bathroom
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Łazienka
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_bathroom_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_bathroom_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_bathroom_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Wiatrołap
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_entrance
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Wiatrołap
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_entrance_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_entrance_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_entrance_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Korytarz górny
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_upper_corridor
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Korytarz górny
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_upper_corridor_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_upper_corridor_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_upper_corridor_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Garderoba
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_wardrobe
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Garderoba
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_wardrobe_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_wardrobe_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_wardrobe_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Łazienka górna
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_upper_bathroom
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Łazienka górna
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_upper_bathroom_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_upper_bathroom_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_upper_bathroom_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Biuro
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_office
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Biuro
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_office_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_office_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_office_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Pokój dzieci
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_kidsroom
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Pokój dzieci
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_kidsroom_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_kidsroom_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_kidsroom_issues
+        name: Dane i ograniczenia
+      - entity: sensor.sh2_kidsroom_safety
+        name: Safety
+      - entity: sensor.sh2_kidsroom_trv_status
+        name: Potwierdzenia głowic
+  - type: grid
+    cards:
+    - type: heading
+      heading: Sypialnia
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_bedroom
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Sypialnia
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_bedroom_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_bedroom_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_bedroom_issues
+        name: Dane i ograniczenia
+      - entity: sensor.sh2_bedroom_safety
+        name: Safety
+      - entity: sensor.sh2_bedroom_trv_status
+        name: Potwierdzenia głowic
+  - type: grid
+    cards:
+    - type: heading
+      heading: Garaż
+      icon: mdi:home-thermometer
+    - type: tile
+      entity: climate.sh2_garage
+      name: Temperatura i cel
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: entities
+      title: Garaż
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_garage_mode
+        name: Tryb pokoju
+      - entity: sensor.sh2_garage_readiness
+        name: Przewidywana gotowość
+      - entity: sensor.sh2_garage_issues
+        name: Dane i ograniczenia
+  - type: grid
+    cards:
+    - type: heading
+      heading: Jakość danych i obserwacja
+      icon: mdi:clipboard-pulse
+    - type: markdown
+      content: Symulacja safety pokazuje potrzebę obu pokoi przy założeniu wykonania
+        poleceń. Nie zmienia przełącznika safety ani sterowania urządzeniami. Statystyki
+        sprzed początku tego okresu pozostają w historii.
+    - type: entities
+      title: Bieżący okres i safety
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_version
+        name: Wersja
+      - entity: sensor.sh2_evaluation_started
+        name: Początek bieżącej oceny
+      - entity: sensor.sh2_energy_issue
+        name: Dostępność danych energii
+      - entity: sensor.sh2_bedroom_safety_candidate
+        name: Symulacja safety — sypialnia
+      - entity: sensor.sh2_kidsroom_safety_candidate
+        name: Symulacja safety — pokój dziecka
+      - entity: sensor.sh2_safety_candidate_offset
+        name: Wspólne żądanie symulacji safety
+    - type: entities
+      title: Kwalifikacja raportów temperatury
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh2_livingroom_measurement_status
+        name: Salon
+      - entity: sensor.sh2_corridor_measurement_status
+        name: Korytarz
+      - entity: sensor.sh2_bathroom_measurement_status
+        name: Łazienka dolna
+      - entity: sensor.sh2_entrance_measurement_status
+        name: Wiatrołap
+      - entity: sensor.sh2_upper_corridor_measurement_status
+        name: Korytarz górny
+      - entity: sensor.sh2_wardrobe_measurement_status
+        name: Garderoba
+      - entity: sensor.sh2_upper_bathroom_measurement_status
+        name: Łazienka górna
+      - entity: sensor.sh2_office_measurement_status
+        name: Biuro
+      - entity: sensor.sh2_kidsroom_measurement_status
+        name: Pokój dziecka
+      - entity: sensor.sh2_bedroom_measurement_status
+        name: Sypialnia
+      - entity: sensor.sh2_garage_measurement_status
+        name: Garaż

@@ -1,16 +1,14 @@
-HeaterController:
-  # App definitions
-  module: SmartHeating
+# Domyślnie obserwacja. Wdrożenie i przejęcie: docs/runbook.md
+HeaterControllerShadow:
+  module: SmartHeating2.smartheating.appdaemon_app
   class: SmartHeating
   log_level: INFO
   mqtt_plugin: MQTT
   mqtt_discovery_prefix: homeassistant
-  mqtt_base_topic: smart_heating/app
-  health_entity_id: sensor.sh_health
-  health_unique_id: smart_heating_sh_health
-  health_name: Ogrzewanie - stan aplikacji
-
-  # WAM Factors
+  mqtt_base_topic: smart_heating_v2/app
+  health_entity_id: sensor.sh2_health
+  health_unique_id: smart_heating_sh2_health
+  health_name: Ogrzewanie 2.0 — obserwacja
   wam_factors:
     livingroom: 3
     corridor: 3
@@ -19,17 +17,13 @@ HeaterController:
     upper_corridor: 2
     wardrobe: 1
     upper_bathroom: 3
-
-  # Radiator Factors
   rads_factors:
     office: 2
     kidsroom: 8
     bedroom: 8
     garage: 1
-
-  # Config
   config:
-    cycle_time: 5 #[s]
+    cycle_time: 5
     heartbeat_s: 1800
     invalid_state_log_interval_s: 900
     warm_flag_offset: 0.5
@@ -39,7 +33,6 @@ HeaterController:
     radiator_boost_threshold: 25
     rads_error_factor: 4
     force_burn_thres: 0
-
   mqtt_climates:
     discovery_prefix: homeassistant
     base_topic: smart_heating
@@ -51,7 +44,6 @@ HeaterController:
     temperature_unit: C
     default_setpoint: 20
     heat_action_threshold: 0.2
-
   default_setpoints:
     livingroom: 18
     corridor: 19
@@ -64,31 +56,203 @@ HeaterController:
     kidsroom: 20.5
     bedroom: 22
     garage: 15
-
-  # HAL
   HAL_climate_TRVs:
-    office: "climate.office_trv"
-    kidsroom: "climate.kidsroom_trv"
-    bedroom_left: "climate.bedroom_left_trv"
-    bedroom_right: "climate.bedroom_right_trv"
-    garage: "climate.garage_trv"
+    office: climate.office_trv
+    kidsroom: climate.kidsroom_trv
+    bedroom_left: climate.bedroom_left_trv
+    bedroom_right: climate.bedroom_right_trv
+    garage: climate.garage_trv
   HAL_TRV_pos:
-    garage_pos: "sensor.garage_trv_position"
-    bedroomLeft_pos: "sensor.bedroom_left_trv_position"
-    bedroomRight_pos: "sensor.bedroom_right_trv_position"
-    office_pos: "sensor.office_trv_position"
-    kidsRoom_pos: "sensor.kidsroom_trv_position"
+    garage_pos: sensor.garage_trv_position
+    bedroomLeft_pos: sensor.bedroom_left_trv_position
+    bedroomRight_pos: sensor.bedroom_right_trv_position
+    office_pos: sensor.office_trv_position
+    kidsRoom_pos: sensor.kidsroom_trv_position
   HAL_room_temperatures:
-    livingroom: "sensor.salon_temperatura"
-    corridor: "sensor.korytarz_temperatura"
-    bathroom: "sensor.lazienka_temperatura"
-    entrance: "sensor.wiatrolap_temperatura"
-    upper_corridor: "sensor.korytarz_gorny_temperatura"
-    wardrobe: "sensor.garderoba_temperatura"
-    upper_bathroom: "sensor.lazienka_gorna_temperatura"
-    office: "sensor.biuro_temperatura"
-    kidsroom: "sensor.pokoj_dzieci_temperatura"
-    garage: "sensor.garaz_temperatura"
-    bedroom: "sensor.sypialnia_temperatura"
+    livingroom: sensor.salon_temperatura
+    corridor: sensor.korytarz_temperatura
+    bathroom: sensor.lazienka_temperatura
+    entrance: sensor.wiatrolap_temperatura
+    upper_corridor: sensor.korytarz_gorny_temperatura
+    wardrobe: sensor.garderoba_temperatura
+    upper_bathroom: sensor.lazienka_gorna_temperatura
+    office: sensor.biuro_temperatura
+    kidsroom: sensor.pokoj_dzieci_temperatura
+    garage: sensor.garaz_temperatura
+    bedroom: sensor.sypialnia_temperatura
   HAL_output:
-    thermostat_setpoint: "number.thermostat_hc1_manual_temperature_2"
+    thermostat_setpoint: number.thermostat_hc1_manual_temperature_2
+  v2:
+    schema: 2
+    shadow: true
+    active_authorized: false
+    state_path: /config/smartheating/state/shadow.json
+    initial_safety: false
+    initial_warm: false
+    timezone: Europe/Warsaw
+    measurement_ttl_s: 1800
+    # Source snapshots, not the time a template helper last changed its value.
+    # Zigbee baseline reports are hourly; bathroom maxRepIntval=3600 is verified.
+    # 300 s grace is explicit per source; published timestamps are not rewritten.
+    measurement_sources:
+      livingroom:
+        entity: sensor.livingroom_climatesensor_temperature
+        topic: zigbee2mqtt/livingRoom_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      corridor:
+        entity: sensor.thermostat_hc1_current_room_temperature_2
+        topic: ems/thermostat_data
+        value_path: hc1.currtemp
+        max_age_s: 300
+      bathroom:
+        entity: sensor.bathroom_climatesensor_temperature
+        topic: zigbee2mqtt/bathroom_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      entrance:
+        entity: sensor.entrance_climatesensor_temperature
+        topic: zigbee2mqtt/entrance_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      upper_corridor:
+        entity: sensor.uppercorridor_climatesensor_temperature
+        topic: zigbee2mqtt/upperCorridor_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      wardrobe:
+        entity: sensor.wardrobe_climatesensor_temperature
+        topic: zigbee2mqtt/wardrobe_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      upper_bathroom:
+        entity: sensor.upperbathroom_climatesensor_temperature
+        topic: zigbee2mqtt/upperBathroom_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      office:
+        entity: sensor.office_climatesensor_temperature
+        topic: zigbee2mqtt/office_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      kidsroom:
+        entity: sensor.kidsroom_climatesensor_temperature
+        topic: zigbee2mqtt/kidsRoom_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      bedroom:
+        entity: sensor.bedroom_climatesensor_temperature
+        topic: zigbee2mqtt/bedroom_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      garage:
+        entity: sensor.garage_climatesensor_temperature
+        topic: zigbee2mqtt/garage_climateSensor
+        value_path: temperature
+        timestamp_key: last_seen
+        max_age_s: 3900
+      energy:
+        entity: sensor.boiler_energy_heating
+        topic: ems/boiler_data
+        value_path: nrgheat
+        max_age_s: 300
+    min_setpoint: 15
+    max_setpoint: 30
+    slew_per_minute: 0.5
+    safety_on: 0.5
+    safety_off: 0.2
+    safety_delay_s: 900
+    safety_diagnostic_s: 3600
+    retry_s: 30
+    max_attempts: 3
+    retry_cooldown_s: 900
+    margin_s: 1800
+    max_lead_s: 86400
+    commit: unpackaged
+    rooms:
+      livingroom:
+        schedule: switch.schedule_livingroomheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      corridor:
+        schedule: switch.schedule_corridorheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      bathroom:
+        schedule: switch.schedule_bathroomheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      entrance:
+        schedule: switch.schedule_entranceheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      upper_corridor:
+        schedule: switch.schedule_uppercorridorheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      wardrobe:
+        schedule: switch.schedule_wardrobeheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      upper_bathroom:
+        schedule: switch.schedule_upperbathroomheating
+        short_drop: 0.5
+        long_cap: 18
+        warmup_rate: 0.25
+        away_exempt: false
+        safety: false
+      office:
+        schedule: switch.schedule_officeheating
+        short_drop: 1
+        long_cap: 17
+        warmup_rate: 0.5
+        away_exempt: false
+        safety: false
+      kidsroom:
+        schedule: switch.schedule_kidsroomheating
+        short_drop: 1
+        long_cap: 17
+        warmup_rate: 0.5
+        away_exempt: false
+        safety: true
+      garage:
+        schedule: switch.schedule_garageheating
+        short_drop: 1
+        long_cap: 17
+        warmup_rate: 0.5
+        away_exempt: true
+        safety: false
+      bedroom:
+        schedule: switch.schedule_bedroomheating
+        short_drop: 1
+        long_cap: 17
+        warmup_rate: 0.5
+        away_exempt: false
+        safety: true

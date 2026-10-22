@@ -136,10 +136,10 @@ Application state is then published to app topics:
 
 ```text
 smart_heating/livingroom/temperature/state
-smart_heating/livingroom/temperature/set
+smart_heating/session/<session>/livingroom/temperature/set
 smart_heating/livingroom/current_temperature/state
 smart_heating/system/control/warm_flag/state
-smart_heating/system/control/warm_flag/set
+smart_heating/session/<session>/system/control/warm_flag/set
 smart_heating/system/diagnostic/total_wam/state
 ```
 
@@ -271,3 +271,41 @@ SmartHeating owns and exposes:
 - safety flow diagnostics
 
 SmartHeating does not use Home Assistant helpers as runtime state storage.
+
+## Version 2 components and qualification
+
+The pure components in `src/smartheating/` receive typed values and an injected
+clock. They do not call HA services. `Runtime` composes targets, voting, safety,
+arbitration, devices, metrics, persistence and MQTT. `appdaemon_app.py` adapts
+`HealthAppBase` and serializes callbacks with a lock.
+
+Temperature observations have a finite age limit and must be finite. A static
+actuator setpoint is qualified by HA availability and connection state, rather
+than the temperature age limit. Matching a target confirms the HA setting;
+it does not prove physical valve movement, water flow or flame.
+
+The default observation deployment is a separate AppDaemon package named
+`SmartHeating2`, with a package marker and the configured module
+`SmartHeating2.smartheating.appdaemon_app`. It owns `sh2` entities and
+`smart_heating_v2` topics. Both the device reconciler and service adapter block
+physical writes. The existing controller keeps ownership until the pilot gate.
+
+Manual MQTT command topics include a new session on startup and reconnection.
+Discovery updates HA with those topics. This avoids replaying a retained manual
+command when an AppDaemon plugin does not expose the MQTT retain flag. Schedule
+notifications have their own stable topic and cannot replace a manual override;
+the current schedule definition supplies the authoritative boundaries and target.
+Existing active climate IDs and state topics remain compatible at takeover.
+
+The migration tool may read the previous app's virtual climates and switches once
+to preserve their state. This is a bootstrap export, never a live command loop.
+
+Recorder owns history. Monotonic comfort/coverage counters are computed before raw
+history can be purged and checkpointed before publishing. The small state JSON
+also contains the mode, arrival, overrides, energy allocations and bounded
+recovery episodes. A previous JSON copy supports recovery; automatically
+publishing older counters is blocked until their high-water values are reconciled.
+
+Weekly analysis reads hourly statistics and recovery records. It issues at most
+one recommendation and has no actuator execution path. See `README.md` for the
+component map and `docs/runbook.md` for the observation, takeover and rollback gates.
