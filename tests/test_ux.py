@@ -1,9 +1,11 @@
 import json
+from dataclasses import replace
 from datetime import timedelta
 
 import pytest
-from conftest import FakeClock, FakeHome
+from conftest import FakeClock, FakeHome, ha_entity
 
+from smartheating.measurements import Source
 from smartheating.model import Mode
 from smartheating.runtime import Runtime
 
@@ -120,4 +122,28 @@ def test_summary_does_not_hide_missing_measurement(cfg):
     assert summary["measurements_valid"] == len(cfg.rooms) - 1
     attrs = json.loads(last(home, app.mqtt.topic("bedroom/attributes")))
     assert not attrs["measurement_available"] and not attrs["in_comfort"]
+    assert not home.calls
+
+
+def test_energy_recovery_feedback_is_published_before_metrics_checkpoint(cfg):
+    source = Source.parse(
+        {
+            "entity": "sensor.energy",
+            "topic": "ems/boiler_data",
+            "value_path": "nrgheat",
+            "max_age_s": 300,
+        },
+        counter=True,
+    )
+    cfg = replace(cfg, measurement_sources={"energy": source})
+    clock = FakeClock()
+    home = FakeHome(cfg, clock)
+    home.states["sensor.energy"] = ha_entity(100, clock)
+    app = Runtime(cfg, clock, home, home)
+    app.start()
+    assert last(home, app.mqtt.topic("system/diagnostic/energy_issue/state")) == "ems_unavailable"
+    clock.advance(10)
+    app.reports.ingest("ems/boiler_data", '{"nrgheat":100}', clock.now(), False)
+    app.tick()
+    assert last(home, app.mqtt.topic("system/diagnostic/energy_issue/state")) == "none"
     assert not home.calls

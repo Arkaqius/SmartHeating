@@ -70,6 +70,7 @@ def room_cards(key: str) -> list[dict[str, object]]:
             "type": "tile",
             "entity": entity,
             "name": NAMES[key],
+            "hide_state": True,
             "features": [
                 {"type": "target-temperature"},
                 {"type": "climate-hvac-modes", "style": "dropdown"},
@@ -77,6 +78,10 @@ def room_cards(key: str) -> list[dict[str, object]]:
         },
         markdown(
             "{% set e = '" + entity + "' %}\n"
+            "{% if state_attr(e, 'measurement_available') %}"
+            "Teraz **{{ state_attr(e, 'current_temperature') }}°C** · "
+            "{% else %}Brak pomiaru · {% endif %}"
+            "Cel **{{ state_attr(e, 'temperature') }}°C**\n\n"
             "{{ state_attr(e, 'target_source_label') or 'Oczekiwanie na dane' }}"
             "{% if not state_attr(e, 'measurement_available') %} · Brak pomiaru{% endif %}"
             "{% if state_attr(e, 'needs_heat') %} · Potrzebuje ciepła{% endif %}"

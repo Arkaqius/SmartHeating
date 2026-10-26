@@ -447,8 +447,8 @@ class Runtime:
                 self.mqtt.diagnostic(
                     f"energy_{energy_mode}_kwh", self.energy.totals[energy_mode], force=True
                 )
-            self.mqtt.diagnostic("energy_issue", self.energy.issue or "none", force=True)
             self._last_publish = now
+        self.mqtt.diagnostic("energy_issue", self.energy.issue or "none", force=periodic)
         for room in self.config.rooms:
             key, target = room.key, latest[room.key]
             reading = readings.get(key)
