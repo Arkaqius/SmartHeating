@@ -196,3 +196,48 @@ Okres od wdrożenia do tej korekty obejmuje zaniżone cele odziedziczone z v1. O
 Odczyt HA i świeże nie-retained MQTT potwierdziły lewy TRV sypialni: auto/manual, 22°C, force normal; raportowana pozycja zaworu 50%. Od 17:40:55 obie głowice mają `confirmed`, więc sypialnia nie jest już wykluczona przez brak potwierdzenia. Wszystkie pięć TRV i CW400 (20,5°C) potwierdzone. V1 i shadow nadal terminated, 0 callbacków; v2 jako jedyny sterownik. Nie wysyłano nowych komend w ramach kontroli.
 
 Po przywróceniu Home potwierdzono w ostatnim checkpointcie 18,33 min danych: 100% pokrycia wszystkich pokojów; przyrost energii EMS i v2 identyczny 0,82 kWh, bez błędu energii i nadpisań. Safety nadal OFF. Komfort jeszcze nieosiągnięty: sypialnia 20,7/22°C, łazienka górna 20,5/22°C; inne pomieszczenia także mają odchylenia powyżej 0,5°C. To zamknięcie blokady komunikacji TRV, nie odbiór komfortu ani oszczędności. Dowód: lokalny `reports/trv-recovered-20261026.json`.
+
+
+## UX rc.3 — 26.10.2026, 23:03:52
+
+Wdrożono `2.0.0-rc.3`, commit `6b592a2bb048d213191c942e8d4c09dce289d061`,
+config `2d768800b20d121b`. V2 pozostaje jedynym aktywnym sterownikiem;
+v1 i obserwator są terminated, mają 0 callbacków oraz trwałe `disable: true`.
+Wersja uruchamia nową epokę `2026-10-26T22:03:52.801221+00:00`, bez zerowania
+liczników. Przy ocenie pilotażu oddzielać epoki i porównywać przyrosty; sama
+zmiana UX nie dowodzi oszczędności. Bramka 14 dni bieżącej epoki pozostaje aktywna.
+
+- Trzy widoki: Dom (`smartheating`), Plan i powrót (`smartheating-control`),
+  Diagnostyka (`smartheating-debug`). Dawna ścieżka `smartheating-v2` pozostaje
+  działającym podwidokiem Dom. Zachowano wcześniejsze karty CWU i pozostałe
+  trzy widoki dashboardu bez zmiany.
+- W pokojach widać pomiar, cel, źródło i koniec ręcznego nadpisania. Powrót do
+  planu dotyczy pojedynczego pokoju. Plan ma natywny wybór daty przyjazdu,
+  anulowanie i powrót do Home. Nie dodano helperów HA; nowe encje publikuje v2.
+- Edytor obecnych codziennych harmonogramów ma walidację, jawny zapis,
+  wykrywanie konfliktów i potwierdzenie odczytem HA. Moduł zarejestrowano
+  przez API zasobów Lovelace; odczyt odpowiada plikowi źródłowemu.
+- Zweryfikowano 90 odwołań do encji bez braków i 14 unikatowych szablonów Jinja.
+  Hash końcowego dashboardu: `d1ebccdbc2c645c8`. Stan końcowy: Gotowe,
+  11/11 źródeł, 5/5 TRV, potwierdzone komendy, `energy_issue=none`.
+- Home, brak terminu i nadpisań oraz oba przełączniki OFF zachowane. Historia
+  potwierdziła odrzucenie daty z przeszłości o 23:06:00; polecenie powrotu garażu
+  do planu potwierdzono bez zmiany jego celu 15°C. Nie przełączano domu w Away
+  i nie zmieniano rzeczywistych harmonogramów tylko na potrzeby testu.
+- Hashami porównano niezmienione moduły regulatora: control, config, devices,
+  measurements, schedules i targets. Pozostały te same wzory WAM, dogrzewanie,
+  safety, wagi, TTL i nastawy urządzeń. Poprawiono natomiast publikację stanu
+  energii po odzyskaniu raportów i usunięto z widoku odziedziczoną akcję HVAC v1.
+- Pakiet podmieniono po zatrzymaniu samej v2, przy zweryfikowanym braku obcych
+  zmian plików. Normalna kontrola plików AppDaemon załadowała nowy kod; nie
+  używano globalnego reload ani restartu dodatku. Przywrócono production_mode.
+- Walidacja: 87 testów pytest, 4 testy Node, Ruff, formatter i mypy strict.
+  Wizualnie sprawdzono edytor na danych testowych przy szerokości 390 px:
+  zapis z potwierdzeniem i błąd kroku temperatury. Pełny odbiór wyglądu natywnych
+  widoków HA wymaga zalogowania w otwartej przeglądarce; MCP potwierdził ich
+  konfigurację, encje i szablony.
+
+Checkpoint liczników 23:08:57 Europe/Warsaw zachowuje wszystkie wartości względem
+kopii sprzed UX i bieżący tryb. Dowody: lokalne `reports/ux-deployment-20261026.md`
+i JSON oraz `runtime/ux-20261026/`. Kopia odtworzeniowa AppDaemon:
+`codex-backups/smartheating-ux-20261026T214833Z`. Instrukcja UX: [ux.md](ux.md).
