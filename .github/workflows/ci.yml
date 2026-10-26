@@ -18,3 +18,7 @@ jobs:
       - run: ruff format --check .
       - run: mypy --strict
       - run: pytest -q
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --test frontend/schedule.test.mjs

@@ -163,6 +163,10 @@ class SmartHeating(HealthAppBase):
                     self.runtime.command(string(message["topic"]), string(message["payload"]))
             except (ValueError, KeyError) as exc:
                 self.log(f"Rejected command: {exc}", level="WARNING")
+                if self.runtime is not None:
+                    self.runtime.mqtt.diagnostic(
+                        "command_feedback", f"Nie przyjęto ustawienia: {exc}"
+                    )
             except Exception as exc:
                 self.enter_safe_state(
                     f"Command failed: {exc}", stop_timers=True, stop_listeners=True

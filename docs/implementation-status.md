@@ -152,3 +152,47 @@ Pilotaż nadal nie został rozpoczęty. Nie zmieniono nastaw kotła, RTL, fizycz
 głowic ani aktualnego przełącznika safety v1. Historycznych luk rc.1 nie uzupełniono
 wstecznie. Opublikowane raporty MQTT nie są niezależnym dowodem czasu sprzętowego
 pomiaru ani kalibracji czujników; ograniczenia opisano w dokumencie źródeł.
+
+
+## Odbiór obserwacji rc.2 — 25.10.2026
+
+Wykonano około 22:32 Europe/Warsaw, po planowanym terminie 16:10. Pełny niewielki raport i dowody liczbowe: [raport odbioru](../reports/observation-acceptance-20261025.md) oraz sąsiedni JSON (lokalne, wykluczone z Git). Nie przejęto sterowania ani nie zmieniono HA, urządzeń, przełączników, harmonogramów lub TTL.
+
+- Evaluation od 22.10 15:02:52 UTC potwierdzone w aktualnym pliku shadow.json; do checkpointu 25.10 21:27:23 UTC minęło 78,41 h. Komfort policzono od checkpointu 22.10 15:11:43 UTC, bez zaliczania rc.1: 78,26 h oczekiwanego czasu.
+- Pokrycie zakwalifikowanymi raportami wszystkich pokojów 99,68–99,86%; 78,01–78,15 h mierzonych. Osobno porównano nominalne 72 h agregatów po korekcie trybów TRV 22.10; krótkie luki obniżają tam czas pomiarów do 71,82–71,92 h. Po przedłużeniu tej bazy do bieżącego checkpointu każdy pokój przekracza 72.32 h pomiarów po korekcie TRV.
+- Wszystkie 22 pliki v2 i 8 plików v1 zgodne z manifestem, shadow=true, active_authorized=false, obie blokady usług fizycznych obecne. 156 próbek health bez spadku uptime; największy odstęp heartbeat 1804,166 s. Nie było nowego prowokowanego testu restartu lub reconnect.
+- Recorder: 721 szeregów × 78 godzin = 56 238 rekordów; bez luk godzinowych i malejących sum. Checkpointy nie maleją, partycja komfortu i czasów jest spójna.
+- Sprawdzono 12 surowych źródeł i próbki MQTT; dziewięć historii kontaktów nie ma odstępu ponad 3900 s. Dla łazienki dolnej sprawdzono niedawne MQTT i liczniki, bez pełnej dedykowanej historii kontaktu. Published_snapshot i last_seen nadal nie są sprzętowym znacznikiem pomiaru.
+- EMS CO i v2 Home mają zgodny przyrost 68,51 kWh. Stały licznik CO nadal przyjmuje żywe raporty EMS co około 1 s; brak nowego energy_issue.
+- Rzeczywiste safety pozostaje wyłączone, 0 h. Kandydat sypialni był aktywny przy założeniu komend i no_effect; kandydat dziecka nie był aktywny. Nie zaobserwowano jednoczesnej aktywacji dwóch kandydatów; nie utożsamiono symulacji z grzaniem.
+- Cztery TRV nadal auto/manual/normal. Lewa sypialnia nadal auto/schedule, 15°C wobec celu pokoju 22°C. Wymaga wyjaśnienia i potwierdzenia przed pilotażem. Brak alarmu baterii nie dowodzi kondycji ogniw pod obciążeniem.
+- Dane Home spełniają wymaganie obserwacji. **Pilotaż nadal zablokowany przez brak potwierdzenia lewej głowicy i wymagane kontrolowane przyjęcie ścieżki poleceń.** Away/return/arrivals nie wystąpiły. Brak podstaw do strojenia AI przed 14 dniami.
+
+
+## Przejęcie sterowania przez v2 — 26.10.2026
+
+Na bezpośrednie polecenie użytkownika rozpoczęto **aktywny pilotaż rc.2** o 14:51:59 Europe/Warsaw. Jedyny sterownik: `HeaterControllerV2`, commit `0ebd58c`, config `b340896ee8e71fd0`, `shadow=false`, `active_authorized=true`. V1 i obserwator mają 0 callbacków oraz trwałe `disable: true`; kod rc.2 pozostaje bez zmian. Aktualna prywatna konfiguracja: `runtime/pilot-20261026/active-app.yaml`; stan `/config/smartheating/state/active.json`. Dawna obserwacja i jej liczniki są zachowane, nowa epoka nie zalicza ich jako czasu pracy aktywnej v2.
+
+Przełączono i odczytano 11 harmonogramów, zachowano identyfikatory pokojów, Home i oba przełączniki OFF. Przeniesiono zastane cele do następnej granicy harmonogramów. Kontrolowany restart v2 zachował tryb, flagi, nadpisania i liczniki; 79 testów, Ruff, formatter i mypy strict przeszły. CW400 i cztery sprawne TRV potwierdziły odczyty; 11/11 pomiarów pokojowych zakwalifikowano ponownie. Widok `/lovelace/smartheating-v2` jest aktywny; inne widoki pozostały identyczne.
+
+**Jawny wyjątek zaakceptowany przez użytkownika:** lewa głowica sypialni nadal nie potwierdza komend. Użytkownik naprawi urządzenie; nie zmieniono przypisania głowic i nie sfabrykowano potwierdzenia. Dopóki obie głowice nie potwierdzą celu, sypialnia jest pomijana w głosowaniu i eskalacji safety. To warunkowy pilotaż, nie pełny odbiór urządzeń ani zgoda na strojenie AI.
+
+Dowody i ograniczenia platformy: [raport przejęcia](../reports/pilot-takeover-20261026.md) oraz sąsiedni JSON (lokalne, poza Git), pakiet cofnięcia `runtime/pilot-20261026/`. AppDaemon miał błędy usług disable/create; konfigurację zweryfikowano w plikach, a kontrola aktualizacji odtworzyła również inne aplikacje. Nie wykonano celowo domowych rutyn. Ocena ogrzewania i oszczędności wymaga 7–14 dni pilotażu; rekomendacje strojenia co najmniej 14 dni wiarygodnej bieżącej epoki, nie wcześniej niż 9.11 około 14:52.
+
+Końcowy checkpoint 14:58:40 Europe/Warsaw: 11/11 zakwalifikowanych źródeł, `energy_issue=none`, monotoniczne liczniki. Potwierdzono zapis historii i po dwa pięciominutowe agregaty trzech prób kontrolnych Recordera; agregaty godzinowe wymagają zamknięcia godziny. Wszystkie 64 referencje dashboardu istnieją. Sypialnia nadal rejestruje komfort, ale nie nalicza potwierdzonego wykonania poleceń. CW400 odczyt jest zgodny; nie wykonano sztucznego podbicia tylko w celu testowania.
+
+
+## Przywrócenie celów Home — 26.10.2026, 17:31:59
+
+Na polecenie użytkownika ponownie wybrano Home przez MCP, usuwając sześć odziedziczonych nadpisań z migracji. Trwały stan potwierdził `overrides={}`; wszystkie 11 celów porównano z aktywnymi slotami harmonogramów. Salon, korytarz i dolna łazienka 21°C; wiatrołap, górny korytarz i garderoba 20°C; górna łazienka i sypialnia 22°C; biuro 19°C, dziecko 20,5°C, garaż 15°C. Safety i podbicie pozostają OFF, brak terminu przyjazdu. Wersja, konfiguracja, epoka oceny i liczniki zachowane.
+
+WAM zmienił się z około -1,71 do -0,02°C. CW400 podnosi nastawę z ograniczeniem szybkości zmian; odczyty i cele zapisano w `reports/home-targets-restored-20261026.json`, kopie przed/po w `runtime/pilot-20261026/home-reset-*`. Prawy TRV sypialni potwierdził w surowym MQTT 22°C, auto/manual/normal; lewy pozostaje niepotwierdzony.
+
+Okres od wdrożenia do tej korekty obejmuje zaniżone cele odziedziczone z v1. Oddzielać go przy ocenie komfortu i zużycia od pracy z poprawnymi celami Home; brak grzania w tym okresie nie dowodzi oszczędności algorytmu.
+
+
+## Lewa głowica potwierdzona — 26.10.2026, 17:40:55
+
+Odczyt HA i świeże nie-retained MQTT potwierdziły lewy TRV sypialni: auto/manual, 22°C, force normal; raportowana pozycja zaworu 50%. Od 17:40:55 obie głowice mają `confirmed`, więc sypialnia nie jest już wykluczona przez brak potwierdzenia. Wszystkie pięć TRV i CW400 (20,5°C) potwierdzone. V1 i shadow nadal terminated, 0 callbacków; v2 jako jedyny sterownik. Nie wysyłano nowych komend w ramach kontroli.
+
+Po przywróceniu Home potwierdzono w ostatnim checkpointcie 18,33 min danych: 100% pokrycia wszystkich pokojów; przyrost energii EMS i v2 identyczny 0,82 kWh, bez błędu energii i nadpisań. Safety nadal OFF. Komfort jeszcze nieosiągnięty: sypialnia 20,7/22°C, łazienka górna 20,5/22°C; inne pomieszczenia także mają odchylenia powyżej 0,5°C. To zamknięcie blokady komunikacji TRV, nie odbiór komfortu ani oszczędności. Dowód: lokalny `reports/trv-recovered-20261026.json`.

@@ -17,6 +17,7 @@ from .mqtt import Mqtt
 from .persistence import StateStore
 from .schedules import DailySchedule
 from .targets import Override, Targets
+from .ux import MODE_NAMES, control_reason, room_attributes
 from .validation import boolean, bounded, instant, mapping, sequence, string
 
 
@@ -131,6 +132,7 @@ class Runtime:
         self.mqtt.available(False)
         self.mqtt.setup()
         self.tick()
+        self.mqtt.diagnostic("command_feedback", "Gotowe na polecenia")
 
     def connection(self, connected: bool) -> None:
         self._connected = connected
@@ -169,7 +171,13 @@ class Runtime:
                 self.targets.select(Mode(payload))
                 self.forecasts = Forecasts()
             elif key == "arrival":
-                self.targets.set_arrival(instant(payload) if payload.strip() else None)
+                arrival = instant(payload) if payload.strip() else None
+                if arrival is not None and arrival <= now:
+                    raise ValueError("Wybierz przyszłą datę i godzinę powrotu")
+                self.targets.set_arrival(arrival)
+                self.forecasts = Forecasts()
+            elif key == "cancel_arrival":
+                self.targets.set_arrival(None)
                 self.forecasts = Forecasts()
             elif key == "return_now":
                 self.targets.select(Mode.HOME)
@@ -182,6 +190,11 @@ class Runtime:
                 if schedule is None:
                     raise ValueError("Cannot bound manual override without a working schedule")
                 self.targets.manual(room, bounded(payload, 5, 30), schedule.at(now).until)
+            elif kind == "resume":
+                if not any(r.key == room for r in self.config.rooms):
+                    raise ValueError("Unknown room")
+                self.targets.overrides.pop(room, None)
+                self.targets.invalidate()
             elif kind == "mode":
                 if payload not in ("off", "heat"):
                     raise ValueError("Unsupported virtual climate mode")
@@ -200,6 +213,7 @@ class Runtime:
                 # A delayed/replayed schedule event must never remove a newer override.
                 self.targets.invalidate()
         self.store.save(self.snapshot())
+        self.mqtt.diagnostic("command_feedback", "Ustawienie zapisane w aplikacji")
         self.targets.invalidate()
         self.tick()
 
@@ -449,12 +463,27 @@ class Runtime:
             )
             if reading:
                 self.mqtt.state(f"{key}/current_temperature/state", reading.value, force=periodic)
+            attributes = room_attributes(
+                self.config,
+                room,
+                target,
+                self.schedules.get(key),
+                reading,
+                self.targets.overrides.get(key),
+                key in self.targets.disabled,
+                confirmed[key],
+                now,
+                self.targets.arrival,
+            )
+            self.mqtt.state(f"{key}/attributes", attributes, force=periodic)
             for suffix, value in {
+                "target_source": attributes["target_source"],
+                "override_until": attributes["override_until"],
                 "temperature": reading.value if reading else None,
                 "target": round(target.value, 3),
                 "comfort_target": target.comfort,
                 "mode": target.mode.value,
-                "readiness": target.ready_at.isoformat() if target.ready_at else "unknown",
+                "readiness": target.ready_at.isoformat() if target.ready_at else None,
                 "issues": ",".join(target.issues) or "none",
                 "safety": "no_effect"
                 if key in self.safety.rooms and self.safety.rooms[key].ineffective
@@ -484,6 +513,49 @@ class Runtime:
                     else "inactive"
                 )
                 self.mqtt.diagnostic(f"{key}_safety_candidate", candidate_status, force=periodic)
+        problems: list[str] = []
+        for room in self.config.rooms:
+            if room.key not in readings:
+                problems.append(f"{room.name}: brak aktualnego pomiaru")
+            if room.key not in self.schedules:
+                problems.append(f"{room.name}: brak poprawnego harmonogramu")
+            if room.trvs and not confirmed[room.key] and not self.config.shadow:
+                problems.append(f"{room.name}: głowice nie potwierdziły nastaw")
+        if not output_confirmed and not self.config.shadow:
+            problems.append("CW400: nastawa niepotwierdzona")
+        if self.energy.issue:
+            problems.append("Brak wiarygodnego bilansu energii EMS")
+        self.mqtt.diagnostic(
+            "system_status",
+            "Obserwacja" if self.config.shadow else "Wymaga uwagi" if problems else "Gotowe",
+            force=periodic,
+        )
+        self.mqtt.state(
+            "system/summary",
+            {
+                "problems": problems,
+                "measurements_valid": len(readings),
+                "measurements_total": len(self.config.rooms),
+                "trvs_confirmed": sum(
+                    self.devices.status.get(t) == "confirmed"
+                    for r in self.config.rooms
+                    for t in r.trvs
+                ),
+                "trvs_total": sum(len(r.trvs) for r in self.config.rooms),
+                "manual_overrides": len(self.targets.overrides),
+                "arrival": self.targets.arrival.isoformat() if self.targets.arrival else None,
+                "requesting_rooms": [
+                    r.name for r in self.config.rooms if errors.get(r.key, 0) > 0.5
+                ],
+            },
+            force=periodic,
+        )
+        self.mqtt.diagnostic("control_reason", control_reason(reasons), force=periodic)
+        self.mqtt.diagnostic(
+            "actual_mode_label",
+            MODE_NAMES[Mode.PREHEAT] if house_mode == "preheat" else MODE_NAMES[self.targets.mode],
+            force=periodic,
+        )
         for key, value in self.flags.items():
             self.mqtt.state(f"system/control/{key}/state", "ON" if value else "OFF", force=periodic)
         self.mqtt.state("system/control/profile/state", self.targets.mode.value, force=periodic)

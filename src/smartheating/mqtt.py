@@ -88,6 +88,8 @@ class Mqtt:
                 fields["device_class"] = "temperature"
             if unit == "kWh":
                 fields["device_class"] = "energy"
+        if key.endswith(("_readiness", "_override_until")):
+            fields["device_class"] = "timestamp"
         self.discover("sensor", key, key.replace("_", " "), fields)
 
     def diagnostic(self, key: str, value: object, *, force: bool = False) -> None:
@@ -115,6 +117,7 @@ class Mqtt:
                     "current_temperature_topic": self.topic(f"{prefix}/current_temperature/state"),
                     "mode_state_topic": self.topic(f"{prefix}/mode/state"),
                     "mode_command_topic": self.command_topic(f"{prefix}/mode/set"),
+                    "json_attributes_topic": self.topic(f"{prefix}/attributes"),
                     "modes": ["off", "heat"],
                     "min_temp": 5,
                     "max_temp": 30,
@@ -129,6 +132,12 @@ class Mqtt:
                     "availability_mode": "all",
                 },
             )
+            self.discover(
+                "button",
+                f"{prefix}_resume",
+                f"{room.name}: wróć do harmonogramu",
+                {"command_topic": self.command_topic(f"{prefix}/resume/set")},
+            )
             for suffix in ("temperature", "target", "comfort_target"):
                 self.sensor(f"{prefix}_{suffix}", "°C")
             for suffix in (
@@ -138,6 +147,8 @@ class Mqtt:
                 "safety",
                 "trv_status",
                 "measurement_status",
+                "target_source",
+                "override_until",
             ):
                 self.sensor(f"{prefix}_{suffix}")
             if room.safety:
@@ -187,6 +198,37 @@ class Mqtt:
                 "command_topic": self.command_topic("system/control/return_now/set"),
             },
         )
+        self.discover(
+            "datetime",
+            "arrival_at",
+            "Termin powrotu",
+            {
+                "state_topic": self.topic("system/control/arrival/state"),
+                "command_topic": self.command_topic("system/control/arrival/set"),
+                "value_template": "{{ value if value else 'None' }}",
+                "retain": False,
+            },
+        )
+        self.discover(
+            "button",
+            "cancel_arrival",
+            "Anuluj termin powrotu",
+            {"command_topic": self.command_topic("system/control/cancel_arrival/set")},
+        )
+        self.sensor("system_status")
+        self.discover(
+            "sensor",
+            "system_summary",
+            "Stan sterowania",
+            {
+                "state_topic": self.topic("system/diagnostic/system_status/state"),
+                "json_attributes_topic": self.topic("system/summary"),
+                "expire_after": 900,
+            },
+        )
+        self.sensor("command_feedback")
+        self.sensor("control_reason")
+        self.sensor("actual_mode_label")
         for key in (
             "total_wam",
             "output_offset",
@@ -234,10 +276,17 @@ class Mqtt:
         topics = [
             self.command_topic(f"{r.key}/{kind}/set")
             for r in self.config.rooms
-            for kind in ("temperature", "mode")
+            for kind in ("temperature", "mode", "resume")
         ]
         topics += [
             self.command_topic(f"system/control/{key}/set")
-            for key in ("warm_flag", "force_flow_safety_rooms", "profile", "arrival", "return_now")
+            for key in (
+                "warm_flag",
+                "force_flow_safety_rooms",
+                "profile",
+                "arrival",
+                "return_now",
+                "cancel_arrival",
+            )
         ]
         return topics + [self.topic(f"{r.key}/schedule/set") for r in self.config.rooms]

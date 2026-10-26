@@ -1,311 +1,953 @@
-title: SmartHeating2.0
+title: Ogrzewanie
 views:
-- title: Ogrzewanie
-  path: smartheating-v2
-  icon: mdi:radiator
+- title: Dom
+  path: smartheating
+  icon: mdi:home-thermometer
   type: sections
   max_columns: 3
   sections:
   - type: grid
     cards:
+    - type: grid
+      columns: 3
+      square: false
+      cards:
+      - type: button
+        name: Dom
+        icon: mdi:home-thermometer
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating
+      - type: button
+        name: Plan i powrót
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-control
+      - type: button
+        name: Diagnostyka
+        icon: mdi:stethoscope
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-debug
     - type: markdown
-      content: '## SmartHeating2.0 — pilotaż
+      content: '## {{ states(''sensor.sh_actual_mode_label'') }}
 
-        Sterowanie aktywne po kontrolowanym przejęciu.'
-  - type: grid
-    cards:
-    - type: entities
-      title: Dom i powrót
-      show_header_toggle: false
-      entities:
-      - entity: select.sh_profile
-        name: 'Profil: home / away_short / away_long'
-      - entity: text.sh_arrival
-        name: 'Przyjazd: ISO8601 z przesunięciem UTC'
-      - entity: button.sh_return_now
-        name: Wracam teraz
-      - entity: switch.sh_force_flow_safety_rooms
-        name: 'Safety: sypialnia i pokój dziecka'
-      - entity: switch.sh_warm_flag
-        name: Dogrzanie
-      - entity: sensor.sh_actual_mode
-        name: Rzeczywisty tryb domu
-      - entity: binary_sensor.sh_runtime
-        name: Sterownik odpowiada
-  - type: grid
-    cards:
+        **Sterowanie:** {{ states(''sensor.sh_system_status'') }}
+
+        {% set s = ''sensor.sh_system_summary'' %}
+
+        Pomiary: {{ state_attr(s, ''measurements_valid'') }}/{{ state_attr(s, ''measurements_total'')
+        }}
+
+        Głowice: {{ state_attr(s, ''trvs_confirmed'') }}/{{ state_attr(s, ''trvs_total'')
+        }}
+
+        {% set problems = state_attr(s, ''problems'') %}
+
+        {% if problems %}{% for problem in problems %}
+
+        - {{ problem }}
+
+        {% endfor %}{% endif %}
+
+        {% set manual = state_attr(s, ''manual_overrides'') %}
+
+        {% if manual %}**Ręczne ustawienia: {{ manual }}.**
+
+        Ich termin i powrót do planu znajdziesz przy pokojach.{% endif %}
+
+        '
+    - &id001
+      type: grid
+      columns: 3
+      square: false
+      cards:
+      - type: button
+        name: Dom
+        icon: mdi:home
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.sh_profile
+          data:
+            option: home
+          confirmation:
+            text: Zmiana profilu zakończy ręczne nadpisania pokojów. Przejście do
+              Dom anuluje termin powrotu.
+      - type: button
+        name: Na krótko
+        icon: mdi:walk
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.sh_profile
+          data:
+            option: away_short
+          confirmation:
+            text: Zmiana profilu zakończy ręczne nadpisania pokojów. Przejście do
+              Dom anuluje termin powrotu.
+      - type: button
+        name: Wyjazd
+        icon: mdi:bag-suitcase
+        tap_action:
+          action: perform-action
+          perform_action: select.select_option
+          target:
+            entity_id: select.sh_profile
+          data:
+            option: away_long
+          confirmation:
+            text: Zmiana profilu zakończy ręczne nadpisania pokojów. Przejście do
+              Dom anuluje termin powrotu.
     - type: markdown
-      content: 'Away krótkie obniża cele podłogówki o0,5°C, grzejników o1°C. Away
-        wyjazdowe ogranicza je do18°C i17°C. Garaż zachowuje harmonogram.
+      content: '### Zapotrzebowanie i praca kotła
 
+        {% set rooms = state_attr(''sensor.sh_system_summary'', ''requesting_rooms'')
+        %}
 
-        Termin wpisz np. `2026-10-25T18:00:00+01:00`. Puste pole anuluje termin. Oszacowanie
-        gotowości nie jest gwarancją osiągnięcia celu.'
-  - type: grid
-    cards:
-    - type: entities
-      title: Decyzja i potwierdzenie nastawy
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_total_wam
-        name: WAM
-      - entity: sensor.sh_output_offset
-        name: Korekta po ograniczeniach
-      - entity: sensor.sh_output_setpoint
-        name: Żądana nastawa CW400
-      - entity: sensor.sh_confirmed_setpoint
-        name: Odczytana nastawa CW400
-      - entity: sensor.sh_command_status
-        name: Potwierdzenie polecenia
-      - entity: sensor.sh_output_reasons
-        name: Powody decyzji
+        **Poniżej celu:** {{ rooms | join('', '') if rooms else ''brak wskazanych
+        pokojów'' }}
+
+        **Decyzja sterownika:** {{ states(''sensor.sh_control_reason'') }}
+
+        {% set flame = states(''sensor.boiler_flame_current_2'') %}
+
+        **Palnik:** {% if is_number(flame) %}
+
+        {{ ''wykryty płomień'' if flame | float > 0 else ''brak płomienia'' }}
+
+        {% else %}brak danych{% endif %}
+
+        {% set co = states(''binary_sensor.boiler_heating_active_2'') %}
+
+        {% set cwu = states(''binary_sensor.boiler_tapwater_active_2'') %}
+
+        **CO:** {{ {''on'': ''aktywne'', ''off'': ''nieaktywne''}.get(co, ''brak danych'')
+        }}
+
+        **CWU:** {{ {''on'': ''aktywne'', ''off'': ''nieaktywne''}.get(cwu, ''brak
+        danych'') }}
+
+        Odczyt nastawy potwierdza ustawienie regulatora. Temperaturę pomieszczenia
+        oceniaj osobno.
+
+        '
   - type: grid
     cards:
     - type: heading
-      heading: Salon
-      icon: mdi:home-thermometer
+      heading: Parter
+      icon: mdi:home-floor-0
     - type: tile
       entity: climate.sh_livingroom
-      name: Temperatura i cel
+      name: Salon
       features:
       - type: target-temperature
       - type: climate-hvac-modes
         style: dropdown
-    - type: entities
-      title: Salon
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_livingroom_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_livingroom_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_livingroom_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Korytarz
-      icon: mdi:home-thermometer
+    - type: markdown
+      content: '{% set e = ''climate.sh_livingroom'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_livingroom_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_livingroom_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_livingroom_resume
     - type: tile
       entity: climate.sh_corridor
-      name: Temperatura i cel
+      name: Korytarz
       features:
       - type: target-temperature
       - type: climate-hvac-modes
         style: dropdown
-    - type: entities
-      title: Korytarz
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_corridor_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_corridor_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_corridor_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Łazienka
-      icon: mdi:home-thermometer
+    - type: markdown
+      content: '{% set e = ''climate.sh_corridor'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_corridor_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_corridor_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_corridor_resume
     - type: tile
       entity: climate.sh_bathroom
-      name: Temperatura i cel
+      name: Łazienka
       features:
       - type: target-temperature
       - type: climate-hvac-modes
         style: dropdown
-    - type: entities
-      title: Łazienka
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_bathroom_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_bathroom_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_bathroom_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Wiatrołap
-      icon: mdi:home-thermometer
+    - type: markdown
+      content: '{% set e = ''climate.sh_bathroom'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_bathroom_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_bathroom_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_bathroom_resume
     - type: tile
       entity: climate.sh_entrance
-      name: Temperatura i cel
+      name: Wiatrołap
       features:
       - type: target-temperature
       - type: climate-hvac-modes
         style: dropdown
-    - type: entities
-      title: Wiatrołap
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_entrance_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_entrance_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_entrance_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Korytarz górny
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_upper_corridor
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Korytarz górny
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_upper_corridor_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_upper_corridor_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_upper_corridor_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Garderoba
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_wardrobe
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Garderoba
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_wardrobe_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_wardrobe_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_wardrobe_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Łazienka górna
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_upper_bathroom
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Łazienka górna
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_upper_bathroom_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_upper_bathroom_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_upper_bathroom_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Biuro
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_office
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Biuro
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_office_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_office_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_office_issues
-        name: Dane i ograniczenia
-  - type: grid
-    cards:
-    - type: heading
-      heading: Pokój dzieci
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_kidsroom
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Pokój dzieci
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_kidsroom_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_kidsroom_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_kidsroom_issues
-        name: Dane i ograniczenia
-      - entity: sensor.sh_kidsroom_safety
-        name: Safety
-      - entity: sensor.sh_kidsroom_trv_status
-        name: Potwierdzenia głowic
-  - type: grid
-    cards:
-    - type: heading
-      heading: Sypialnia
-      icon: mdi:home-thermometer
-    - type: tile
-      entity: climate.sh_bedroom
-      name: Temperatura i cel
-      features:
-      - type: target-temperature
-      - type: climate-hvac-modes
-        style: dropdown
-    - type: entities
-      title: Sypialnia
-      show_header_toggle: false
-      entities:
-      - entity: sensor.sh_bedroom_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_bedroom_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_bedroom_issues
-        name: Dane i ograniczenia
-      - entity: sensor.sh_bedroom_safety
-        name: Safety
-      - entity: sensor.sh_bedroom_trv_status
-        name: Potwierdzenia głowic
-  - type: grid
-    cards:
-    - type: heading
-      heading: Garaż
-      icon: mdi:home-thermometer
+    - type: markdown
+      content: '{% set e = ''climate.sh_entrance'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_entrance_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_entrance_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_entrance_resume
     - type: tile
       entity: climate.sh_garage
-      name: Temperatura i cel
+      name: Garaż
       features:
       - type: target-temperature
       - type: climate-hvac-modes
         style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_garage'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_garage_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_garage_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_garage_resume
+  - type: grid
+    cards:
+    - type: heading
+      heading: Piętro
+      icon: mdi:home-floor-1
+    - type: tile
+      entity: climate.sh_bedroom
+      name: Sypialnia
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_bedroom'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_bedroom_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_bedroom_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_bedroom_resume
+    - type: tile
+      entity: climate.sh_kidsroom
+      name: Pokój dzieci
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_kidsroom'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_kidsroom_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_kidsroom_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_kidsroom_resume
+    - type: tile
+      entity: climate.sh_office
+      name: Biuro
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_office'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_office_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_office_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_office_resume
+    - type: tile
+      entity: climate.sh_upper_corridor
+      name: Korytarz górny
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_upper_corridor'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_upper_corridor_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_upper_corridor_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_upper_corridor_resume
+    - type: tile
+      entity: climate.sh_upper_bathroom
+      name: Łazienka górna
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_upper_bathroom'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_upper_bathroom_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_upper_bathroom_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_upper_bathroom_resume
+    - type: tile
+      entity: climate.sh_wardrobe
+      name: Garderoba
+      features:
+      - type: target-temperature
+      - type: climate-hvac-modes
+        style: dropdown
+    - type: markdown
+      content: '{% set e = ''climate.sh_wardrobe'' %}
+
+        {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
+        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
+        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+    - type: conditional
+      conditions:
+      - entity: sensor.sh_wardrobe_target_source
+        state: manual
+      card:
+        type: vertical-stack
+        cards:
+        - type: entities
+          title: Ręczne ustawienie
+          show_header_toggle: false
+          entities:
+          - entity: sensor.sh_wardrobe_override_until
+            name: Obowiązuje do
+        - type: button
+          name: Wróć do harmonogramu
+          icon: mdi:calendar-refresh
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.sh_wardrobe_resume
+- title: Plan i powrót
+  path: smartheating-control
+  icon: mdi:calendar-clock
+  type: sections
+  max_columns: 2
+  sections:
+  - type: grid
+    cards:
+    - type: grid
+      columns: 3
+      square: false
+      cards:
+      - type: button
+        name: Dom
+        icon: mdi:home-thermometer
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating
+      - type: button
+        name: Plan i powrót
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-control
+      - type: button
+        name: Diagnostyka
+        icon: mdi:stethoscope
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-debug
+    - type: heading
+      heading: Nieobecność i powrót
+      icon: mdi:bag-suitcase
+    - *id001
+    - type: markdown
+      content: 'Krótka nieobecność: podłogówka −0,5°C, grzejniki −1°C. Wyjazd: do
+        18°C i 17°C. Garaż zachowuje plan.
+
+
+        Wybierz termin powrotu poniżej. Aplikacja sama rozpocznie przygotowanie wcześniej
+        i przejdzie do Dom o tej godzinie.'
     - type: entities
-      title: Garaż
+      title: Termin powrotu
       show_header_toggle: false
       entities:
-      - entity: sensor.sh_garage_mode
-        name: Tryb pokoju
-      - entity: sensor.sh_garage_readiness
-        name: Przewidywana gotowość
-      - entity: sensor.sh_garage_issues
-        name: Dane i ograniczenia
+      - entity: datetime.sh_arrival_at
+        name: Data i godzina przyjazdu
+    - type: button
+      name: Anuluj termin
+      icon: mdi:calendar-remove
+      tap_action:
+        action: perform-action
+        perform_action: button.press
+        target:
+          entity_id: button.sh_cancel_arrival
+    - type: button
+      name: Jestem w domu
+      icon: mdi:home
+      tap_action:
+        action: perform-action
+        perform_action: button.press
+        target:
+          entity_id: button.sh_return_now
+        confirmation:
+          text: Przywrócić Dom i zakończyć ręczne nadpisania?
+    - type: entities
+      title: Ostatnie polecenie
+      show_header_toggle: false
+      entities:
+      - entity: sensor.sh_command_feedback
+        name: Wynik
+    - type: markdown
+      content: '### Plan przygotowania
+
+        {% set arrival = state_attr(''sensor.sh_system_summary'', ''arrival'') %}
+
+        {% if arrival %}
+
+        Powrót: **{{ as_local(as_datetime(arrival)).strftime(''%d.%m.%Y o %H:%M'')
+        }}**.
+
+        {% if is_state(''select.sh_profile'', ''home'') %}
+
+        Wybierz profil nieobecności, aby uruchomić przygotowanie powrotu.
+
+        {% endif %}
+
+        {% else %}Nie ma zaplanowanego powrotu. Nieobecność trwa do ręcznego zakończenia.{%
+        endif %}
+
+
+        | Pokój | Start przygotowania | Szacowana gotowość |
+
+        | :-- | :-- | :-- |
+
+        {% set start = state_attr(''climate.sh_livingroom'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_livingroom'', ''ready_at'') %}
+
+        | Salon | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if start
+        else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'') if ready
+        and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_corridor'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_corridor'', ''ready_at'') %}
+
+        | Korytarz | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if
+        start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_bathroom'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_bathroom'', ''ready_at'') %}
+
+        | Łazienka | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if
+        start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_entrance'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_entrance'', ''ready_at'') %}
+
+        | Wiatrołap | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if
+        start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_upper_corridor'', ''preheat_start'')
+        %}{% set ready = state_attr(''climate.sh_upper_corridor'', ''ready_at'') %}
+
+        | Korytarz górny | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'')
+        if start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_wardrobe'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_wardrobe'', ''ready_at'') %}
+
+        | Garderoba | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if
+        start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_upper_bathroom'', ''preheat_start'')
+        %}{% set ready = state_attr(''climate.sh_upper_bathroom'', ''ready_at'') %}
+
+        | Łazienka górna | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'')
+        if start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_office'', ''preheat_start'') %}{% set
+        ready = state_attr(''climate.sh_office'', ''ready_at'') %}
+
+        | Biuro | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if start
+        else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'') if ready
+        and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_kidsroom'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_kidsroom'', ''ready_at'') %}
+
+        | Pokój dzieci | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'')
+        if start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+        {% set start = state_attr(''climate.sh_bedroom'', ''preheat_start'') %}{%
+        set ready = state_attr(''climate.sh_bedroom'', ''ready_at'') %}
+
+        | Sypialnia | {{ as_local(as_datetime(start)).strftime(''%d.%m %H:%M'') if
+        start else ''—'' }} | {{ as_local(as_datetime(ready)).strftime(''%H:%M'')
+        if ready and arrival else ''—'' }} |
+
+
+        To oszacowanie. Brak pomiaru lub ograniczenia instalacji mogą opóźnić dogrzanie.'
+  - type: grid
+    cards:
+    - type: custom:smartheating-schedule
+      rooms:
+      - key: livingroom
+        name: Salon
+        schedule: switch.schedule_livingroomheating
+      - key: corridor
+        name: Korytarz
+        schedule: switch.schedule_corridorheating
+      - key: bathroom
+        name: Łazienka
+        schedule: switch.schedule_bathroomheating
+      - key: entrance
+        name: Wiatrołap
+        schedule: switch.schedule_entranceheating
+      - key: upper_corridor
+        name: Korytarz górny
+        schedule: switch.schedule_uppercorridorheating
+      - key: wardrobe
+        name: Garderoba
+        schedule: switch.schedule_wardrobeheating
+      - key: upper_bathroom
+        name: Łazienka górna
+        schedule: switch.schedule_upperbathroomheating
+      - key: office
+        name: Biuro
+        schedule: switch.schedule_officeheating
+      - key: kidsroom
+        name: Pokój dzieci
+        schedule: switch.schedule_kidsroomheating
+      - key: bedroom
+        name: Sypialnia
+        schedule: switch.schedule_bedroomheating
+      - key: garage
+        name: Garaż
+        schedule: switch.schedule_garageheating
+    - type: markdown
+      content: Ręczna temperatura pokoju obowiązuje do kolejnego przedziału, także
+        gdy kolejny cel ma tę samą wartość. Wyłączenie harmonogramu wyklucza pokój
+        z automatycznego sterowania.
+    - type: entities
+      title: Włączone harmonogramy
+      show_header_toggle: false
+      entities:
+      - switch.schedule_livingroomheating
+      - switch.schedule_corridorheating
+      - switch.schedule_bathroomheating
+      - switch.schedule_entranceheating
+      - switch.schedule_uppercorridorheating
+      - switch.schedule_wardrobeheating
+      - switch.schedule_upperbathroomheating
+      - switch.schedule_officeheating
+      - switch.schedule_kidsroomheating
+      - switch.schedule_bedroomheating
+      - switch.schedule_garageheating
+- title: Diagnostyka
+  path: smartheating-debug
+  icon: mdi:stethoscope
+  type: sections
+  max_columns: 3
+  sections:
+  - type: grid
+    cards:
+    - type: grid
+      columns: 3
+      square: false
+      cards:
+      - type: button
+        name: Dom
+        icon: mdi:home-thermometer
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating
+      - type: button
+        name: Plan i powrót
+        icon: mdi:calendar-clock
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-control
+      - type: button
+        name: Diagnostyka
+        icon: mdi:stethoscope
+        tap_action:
+          action: navigate
+          navigation_path: /lovelace/smartheating-debug
+    - type: markdown
+      content: '## {{ states(''sensor.sh_actual_mode_label'') }}
+
+        **Sterowanie:** {{ states(''sensor.sh_system_status'') }}
+
+        {% set s = ''sensor.sh_system_summary'' %}
+
+        Pomiary: {{ state_attr(s, ''measurements_valid'') }}/{{ state_attr(s, ''measurements_total'')
+        }}
+
+        Głowice: {{ state_attr(s, ''trvs_confirmed'') }}/{{ state_attr(s, ''trvs_total'')
+        }}
+
+        {% set problems = state_attr(s, ''problems'') %}
+
+        {% if problems %}{% for problem in problems %}
+
+        - {{ problem }}
+
+        {% endfor %}{% endif %}
+
+        {% set manual = state_attr(s, ''manual_overrides'') %}
+
+        {% if manual %}**Ręczne ustawienia: {{ manual }}.**
+
+        Ich termin i powrót do planu znajdziesz przy pokojach.{% endif %}
+
+        '
+    - type: entities
+      title: Aplikacja i wykonanie
+      show_header_toggle: false
+      entities:
+      - sensor.sh_health
+      - binary_sensor.sh_runtime
+      - sensor.sh_version
+      - sensor.sh_config_id
+      - sensor.sh_command_status
+      - sensor.sh_energy_issue
+  - type: grid
+    cards:
+    - type: heading
+      heading: Decyzja regulatora
+      icon: mdi:tune
+    - type: entities
+      title: Obliczenia
+      show_header_toggle: false
+      entities:
+      - sensor.sh_total_wam
+      - sensor.sh_output_offset
+      - sensor.sh_forced_burn_offset
+      - sensor.sh_output_setpoint
+      - sensor.sh_confirmed_setpoint
+      - sensor.sh_control_reason
+    - type: entities
+      title: Funkcje dodatkowe
+      show_header_toggle: false
+      entities:
+      - entity: switch.sh_force_flow_safety_rooms
+        name: Ochrona komfortu sypialni i dziecka
+      - entity: switch.sh_warm_flag
+        name: Dodatkowe dogrzanie +0,5°C
+    - type: markdown
+      content: Ochrona komfortu może podnieść korektę do +4°C po utrzymującym się
+        niedogrzaniu. Działa tylko z poprawnym pomiarem i potwierdzonymi głowicami.
+  - type: grid
+    cards:
+    - type: heading
+      heading: Głowice i kocioł
+      icon: mdi:radiator
+    - type: markdown
+      content: '### Zapotrzebowanie i praca kotła
+
+        {% set rooms = state_attr(''sensor.sh_system_summary'', ''requesting_rooms'')
+        %}
+
+        **Poniżej celu:** {{ rooms | join('', '') if rooms else ''brak wskazanych
+        pokojów'' }}
+
+        **Decyzja sterownika:** {{ states(''sensor.sh_control_reason'') }}
+
+        {% set flame = states(''sensor.boiler_flame_current_2'') %}
+
+        **Palnik:** {% if is_number(flame) %}
+
+        {{ ''wykryty płomień'' if flame | float > 0 else ''brak płomienia'' }}
+
+        {% else %}brak danych{% endif %}
+
+        {% set co = states(''binary_sensor.boiler_heating_active_2'') %}
+
+        {% set cwu = states(''binary_sensor.boiler_tapwater_active_2'') %}
+
+        **CO:** {{ {''on'': ''aktywne'', ''off'': ''nieaktywne''}.get(co, ''brak danych'')
+        }}
+
+        **CWU:** {{ {''on'': ''aktywne'', ''off'': ''nieaktywne''}.get(cwu, ''brak
+        danych'') }}
+
+        Odczyt nastawy potwierdza ustawienie regulatora. Temperaturę pomieszczenia
+        oceniaj osobno.
+
+        '
+    - type: entities
+      title: Potwierdzenia głowic
+      show_header_toggle: false
+      entities:
+      - sensor.sh_office_trv_status
+      - sensor.sh_kidsroom_trv_status
+      - sensor.sh_bedroom_trv_status
+      - sensor.sh_garage_trv_status
+    - type: entities
+      title: Odczyty kotła
+      show_header_toggle: false
+      entities:
+      - sensor.boiler_current_flow_temperature_2
+      - sensor.boiler_flame_current_2
+      - sensor.boiler_energy_heating
+      - sensor.boiler_dhw_energy
+  - type: grid
+    cards:
+    - type: heading
+      heading: Jakość danych
+      icon: mdi:database-check
+    - type: entities
+      title: Źródła pomiarów
+      show_header_toggle: false
+      entities:
+      - sensor.sh_livingroom_measurement_status
+      - sensor.sh_corridor_measurement_status
+      - sensor.sh_bathroom_measurement_status
+      - sensor.sh_entrance_measurement_status
+      - sensor.sh_upper_corridor_measurement_status
+      - sensor.sh_wardrobe_measurement_status
+      - sensor.sh_upper_bathroom_measurement_status
+      - sensor.sh_office_measurement_status
+      - sensor.sh_kidsroom_measurement_status
+      - sensor.sh_bedroom_measurement_status
+      - sensor.sh_garage_measurement_status
+  - type: grid
+    cards:
+    - type: heading
+      heading: Historia temperatur i energii
+      icon: mdi:chart-line
+    - type: history-graph
+      title: Sypialnia
+      hours_to_show: 24
+      entities:
+      - entity: sensor.sh_bedroom_temperature
+        name: Pomiar
+      - entity: sensor.sh_bedroom_target
+        name: Cel
+    - type: history-graph
+      title: Pokój dzieci
+      hours_to_show: 24
+      entities:
+      - entity: sensor.sh_kidsroom_temperature
+        name: Pomiar
+      - entity: sensor.sh_kidsroom_target
+        name: Cel
+    - type: history-graph
+      title: Łazienka górna
+      hours_to_show: 24
+      entities:
+      - entity: sensor.sh_upper_bathroom_temperature
+        name: Pomiar
+      - entity: sensor.sh_upper_bathroom_target
+        name: Cel
+    - type: statistics-graph
+      title: Energia CO i CWU — szacunek EMS
+      chart_type: bar
+      period: day
+      days_to_show: 7
+      stat_types:
+      - change
+      entities:
+      - entity: sensor.boiler_energy_heating
+        name: CO
+      - entity: sensor.boiler_dhw_energy
+        name: CWU

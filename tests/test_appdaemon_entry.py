@@ -184,3 +184,22 @@ def test_measurement_subscription_reconnect_and_cleanup(app):
     assert len(app.mqtt.handles) == count
     app.terminate()
     assert not app.mqtt.handles and not app.home.calls
+
+
+def test_invalid_arrival_has_visible_feedback_and_keeps_home(app):
+    app.initialize()
+    app.mqtt_message(
+        "MQTT_MESSAGE",
+        {
+            "topic": app.runtime.mqtt.command_topic("system/control/arrival/set"),
+            "payload": "2020-01-01T12:00:00+00:00",
+        },
+        {},
+    )
+    assert app.runtime.targets.arrival is None
+    assert app.runtime.targets.mode.value == "home"
+    assert any(
+        topic.endswith("/command_feedback/state") and "Nie przyjęto" in payload
+        for topic, payload, _ in app.home.messages
+    )
+    assert not app.home.calls

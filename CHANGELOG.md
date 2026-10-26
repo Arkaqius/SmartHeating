@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.0.0-rc.3 — 2026-10-26
+
+- UX HA: Dom, Plan i powrót, Diagnostyka; zachowane identyfikatory klimatów i ścieżki widoków.
+- Źródło celu, koniec ręcznego nadpisania i osobny powrót pokoju do harmonogramu.
+- Natywna encja MQTT datetime z lokalnym wyborem przyjazdu i anulowaniem terminu;
+  dotychczasowe pole tekstowe pozostaje zgodne. Data z przeszłości jest odrzucana.
+- Czytelne stany sterowania i komunikaty o odrzuconych poleceniach; zapotrzebowanie,
+  potwierdzenie nastawy i praca palnika pozostają oddzielnymi informacjami.
+- Edytor codziennego planu z walidacją mostu MQTT, pełnej doby i konfliktów,
+  jawnym zapisem oraz potwierdzeniem odczytem HA; testy JS dodane do CI.
+- Nie zmieniono wzorów WAM, warunków dogrzewania, safety, wag ani nastaw urządzeń.
+  Zachowany schemat stanu 2; wersja rc.3 rozpoczyna nową epokę oceny zgodnie
+  z dotychczasową zasadą, bez zerowania liczników ani zmiany bieżącego trybu.
+
 ## 2.0.0-rc.2 — 2026-10-22
 
 - Źródła temperatur są kwalifikowane osobno: surowa encja, temat i pole raportu MQTT,
