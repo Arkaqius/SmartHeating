@@ -241,3 +241,31 @@ Checkpoint liczników 23:08:57 Europe/Warsaw zachowuje wszystkie wartości wzgl�
 kopii sprzed UX i bieżący tryb. Dowody: lokalne `reports/ux-deployment-20261026.md`
 i JSON oraz `runtime/ux-20261026/`. Kopia odtworzeniowa AppDaemon:
 `codex-backups/smartheating-ux-20261026T214833Z`. Instrukcja UX: [ux.md](ux.md).
+
+
+## Poprawka Scheduler rc.4 — 27.10.2026, 19:09:20
+
+Wdrożono `2.0.0-rc.4`, commit `7c0cffaffe419bb9fe088ed722568c8b4d9c5c2b`,
+config `bd3f5f3e74aa7c25`. Parser zachowuje aktywny plan w stanie `triggered`;
+wykonanie przedziału nie wywołuje domyślnych celów ani minutowej blokady kotła
+przez harmonogram korytarza. `off`, `unknown`, `unavailable`, błędna definicja
+oraz niewłaściwy most MQTT nadal są odrzucane. Regulacja i progi bez zmian.
+
+- 100 testów pytest, 4 testy Node, Ruff, formatter i mypy strict przechodzą.
+  CI: run 40556797172, success, Python 3.10 i 3.13. Trzynaście nowych scenariuszy
+  obejmuje pełną minutę triggered, poprawną zmianę celu i wygaśnięcie nadpisania,
+  także przy jednakowej temperaturze przedziałów. Odtworzono rzeczywiste dane HA.
+- Po potwierdzonym zatrzymaniu podmieniono dwa pliki pakietu oraz SHA v2
+  w apps.yaml. Bez globalnego reload/restartu; pozostałe źródła bez zmian.
+- HA: Gotowe, 11/11 źródeł, 5/5 TRV, potwierdzone polecenia i brak błędu energii.
+  Home, przełączniki OFF i brak nadpisań/terminu zachowane. V1 i shadow nadal
+  terminated, 0 callbacków; jedynym aktywnym sterownikiem pozostaje v2.
+- Epoka rc.4 od `2026-10-27T18:09:20.306352+00:00`. Liczniki monotoniczne,
+  bez zerowania; nie zaliczać poprzedniej epoki do bramki strojenia 14 dni.
+  Pierwszy checkpoint rc.4 zachował stan sprzed podmiany; przerwa restartu
+  pozostaje nieobserwowana. Następne naturalne wykonanie harmonogramu nie było
+  jeszcze obserwowane; testy i historyczny replay nie są nowym zdarzeniem HA.
+
+Dowody lokalne: `reports/trigger-fix-deployment-20261027.md` i JSON,
+`runtime/trigger-fix-20261027/`. Kopia AppDaemon:
+`codex-backups/smartheating-trigger-fix-20261027T180722Z`.
