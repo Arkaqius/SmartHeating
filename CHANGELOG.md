@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.0.0-rc.4 — 2026-10-27
+
+- Stan Scheduler `triggered` zachowuje aktywny plan. Wykonanie przedziału nie
+  przełącza celu na domyślny i nie blokuje na minutę sterowania przez korytarz.
+- `off`, `unknown`, `unavailable` i niepoprawne definicje nadal są odrzucane;
+  walidacja mostu MQTT pozostaje bez zmian.
+- Testy obejmują pełną minutę `triggered`, zmianę i identyczność temperatur
+  przedziałów, wygaśnięcie ręcznego celu oraz powrót stanu `on`.
+- Wersja rozpoczyna nową epokę oceny zgodnie z istniejącą regułą, zachowując
+  liczniki, tryb domu i konfigurację regulacji.
+
 ## 2.0.0-rc.3 — 2026-10-26
 
 - UX HA: Dom, Plan i powrót, Diagnostyka; zachowane identyfikatory klimatów i ścieżki widoków.

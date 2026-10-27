@@ -28,7 +28,8 @@ class DailySchedule:
     @classmethod
     def from_ha(cls, raw: object, zone: str) -> "DailySchedule":
         state = mapping(raw)
-        if state.get("state") != "on":
+        # Scheduler uses triggered while executing the enabled plan for about a minute.
+        if state.get("state") not in ("on", "triggered"):
             raise ValueError("Schedule disabled or unavailable")
         attrs = mapping(state["attributes"])
         if sequence(attrs.get("weekdays", [])) != ["daily"]:

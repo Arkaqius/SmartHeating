@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smartheating"
-version = "2.0.0rc3"
+version = "2.0.0rc4"
 description = "Typed, observable multi-room heating controller for AppDaemon"
 requires-python = ">=3.10"
 dependencies = ["tzdata>=2024.1; sys_platform == 'win32'"]
