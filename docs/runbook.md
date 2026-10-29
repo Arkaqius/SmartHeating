@@ -2,6 +2,8 @@
 
 Ten dokument prowadzi przez uruchomienie wersji 2.0 w domu ze wspólnym obiegiem grzejników i podłogówki ograniczanej zaworami RTL. Odbiór kodu, uruchomienie obserwacji i odbiór ogrzewania to osobne decyzje. Aktualne dowody i braki zapisujemy w [rejestrze wdrożenia](implementation-status.md).
 
+W instalacji domowej aktywnie steruje już `HeaterControllerV2` w wersji `2.0.0-rc.4`, z modułu `SmartHeating2.smartheating.appdaemon_app`, pod identyfikatorami `sh_*` i tematami `smart_heating`. Etapy 1–5 poniżej służą nowej instalacji lub kontrolowanej migracji; nie powtarzaj ich przy zwykłym porządkowaniu istniejącego wdrożenia. Repozytoryjny `cfg/app_cfg.yaml` jest szablonem oddzielnej obserwacji, a nie kopią aktywnej konfiguracji. Zachowaj bieżący stan, liczniki i epokę oceny przy pracach porządkowych.
+
 ## Zakres i odpowiedzialność
 
 AppDaemon oblicza cele i polecenia. Home Assistant udostępnia fizyczne urządzenia, harmonogramy i dashboard. Encje aplikacji powstają przez MQTT discovery; ich polecenia wracają przez MQTT. Obowiązuje [kontrakt architektury](../ARCHITECTURE.md).
@@ -14,7 +16,7 @@ Przejęcie istniejących identyfikatorów `climate.sh_*`, przełącznika safety 
 
 Przed uruchomieniem na instalacji przygotuj prywatny pakiet odtworzeniowy:
 
-1. Zapisz commit i wersję aplikacji, kopię wdrożonych plików, konfigurację AppDaemon oraz wersję wspólnej biblioteki `appdaemon_common`. Porównaj skróty wdrożonych plików z repozytorium; punkt odniesienia repo to `08347d9`.
+1. Zapisz commit i wersję aplikacji, kopię wdrożonych plików, konfigurację AppDaemon oraz wersję wspólnej biblioteki `appdaemon_common`. Porównaj skróty wdrożonych plików z właściwym commitem repozytorium. `08347d9` jest zamrożonym historycznym punktem odniesienia w `legacy/`, nie wersją aktywnego wdrożenia.
 2. Potwierdź rzeczywistą wersję Pythona procesu AppDaemon i wersję AppDaemon. Numer wersji dodatku ani Python Home Assistant Core nie są wystarczającym dowodem.
 3. Wyeksportuj definicje wszystkich harmonogramów ogrzewania, ich odbiorców oraz powiązane elementy dashboardu. Zapisz aktywny slot, jego granice, cel i strefę czasową `Europe/Warsaw`.
 4. Zapisz ustawienie przełącznika `switch.sh_force_flow_safety_rooms`, przełącznika podbicia temperatury, cele pokojów oraz tryby fizycznych TRV. Ustawienie safety należy przenieść, zamiast przyjmować nową wartość domyślną.
@@ -159,4 +161,4 @@ Raport proponuje najwyżej jeden eksperyment albo dalszą obserwację. Eksperyme
 
 Pakiet z `python -m smartheating.bundle` rozpakuj do katalogu aplikacji o nazwie `SmartHeating2`. Zawiera zewnętrzny `__init__.py`; konfiguracja używa pełnej nazwy `SmartHeating2.smartheating.appdaemon_app`. Jest to ważne dla zależności i przeładowań pakietów AppDaemon. Nie mieszaj plików pakietu z katalogiem starego sterownika.
 
-CLI eksportu i propozycji migracji: `python -m smartheating.migration`; raportu: `python -m smartheating.reporting`. Widoki: `cfg/dashboard.shadow.yaml` oraz `cfg/dashboard.pilot.yaml`. Mapa urządzeń: [entity-map.md](entity-map.md). Wyniki przeliczenia gazu dla wszystkich wcześniejszych przedziałów: prywatny `runtime/migration/gas-recalculated.json`.
+CLI eksportu i propozycji migracji: `python -m smartheating.migration`; raportu: `python -m smartheating.reporting`. Szablony widoków dla nowej instalacji: `cfg/dashboard.shadow.yaml` oraz `cfg/dashboard.pilot.yaml`. Aktywny dashboard: [Dom](https://ha.kojbito.org/lovelace/smartheating), [Plan i powrót](https://ha.kojbito.org/lovelace/smartheating-control), [Diagnostyka](https://ha.kojbito.org/lovelace/smartheating-debug); `smartheating-v2` pozostaje aliasem zgodności. Mapa urządzeń: [entity-map.md](entity-map.md). Wyniki przeliczenia gazu dla wszystkich wcześniejszych przedziałów: prywatny `runtime/migration/gas-recalculated.json`.

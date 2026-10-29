@@ -1,6 +1,6 @@
 # SmartHeating 2.0 — rejestr wdrożenia i odbioru
 
-Rejestr rozróżnia zakres uzgodniony, dowody techniczne i wyniki pracy instalacji. Punktem odniesienia jest repozytorium `08347d9` z 20 października 2026 r. Obecnie działa `2.0.0-rc.2` wyłącznie w obserwacji; instalacją nadal steruje 1.x. Poniższe wcześniejsze odczyty rc.1 zachowano jako historię. Aktualny odbiór rc.2 znajduje się na końcu dokumentu. Procedura przejścia przez kolejne bramki znajduje się w [runbooku](runbook.md).
+Rejestr rozróżnia zakres uzgodniony, dowody techniczne i wyniki pracy instalacji. Obecnie jedynym aktywnym sterownikiem jest `HeaterControllerV2`, wersja `2.0.0-rc.4`, z encjami `sh_*`. Wcześniejsze sekcje opisują historyczne etapy v1, obserwacji i przejęcia; nie są instrukcją ponownego uruchomienia tych aplikacji. Bieżące zdarzenia znajdują się na końcu dokumentu. Procedury operacyjne opisuje [runbook](runbook.md).
 
 ## Potwierdzone informacje wyjściowe
 
@@ -269,3 +269,41 @@ oraz niewłaściwy most MQTT nadal są odrzucane. Regulacja i progi bez zmian.
 Dowody lokalne: `reports/trigger-fix-deployment-20261027.md` i JSON,
 `runtime/trigger-fix-20261027/`. Kopia AppDaemon:
 `codex-backups/smartheating-trigger-fix-20261027T180722Z`.
+
+## Wycofanie v1 i obserwacji — 29.10.2026, 22:52
+
+Na polecenie użytkownika usunięto nieaktywne wdrożenie v1 oraz shadow.
+Aktywny `HeaterControllerV2` pozostał na `2.0.0-rc.4`, commit
+`7c0cffaffe419bb9fe088ed722568c8b4d9c5c2b`, config `bd3f5f3e74aa7c25`.
+
+- Katalog v1 i pliki stanu shadow przeniesiono poza aktywne katalogi.
+  `SmartHeating2/apps.yaml` zawiera tylko v2, z identycznymi ustawieniami.
+  Zaktualizowany manifest odzwierciedla rzeczywiste wdrożenie rc.4 active.
+- Wycofano 2596 retained topics MQTT, w tym discovery 860 encji shadow
+  i starego licznika pętli. Ponowny odczyt potwierdził ich brak oraz
+  niezmienione payloady wszystkich 900 aktywnych konfiguracji discovery.
+  Dwa urządzenia shadow zniknęły; współdzielone urządzenie aktywnego
+  ogrzewania i obce discovery zachowano. Sprawdzone dashboardy, YAML
+  i automatyzacje nie miały czynnych konsumentów wycofywanych encji.
+- Historii Recordera nie kasowano. Przed usunięciem wyeksportowano 762 szeregi,
+  104340 rekordów godzinowych (20–29.10 UTC), do 77 plików gzip.
+  Po usunięciu trzy reprezentatywne szeregi shadow z 24–26.10 zachowały
+  identyczne dane godzinowe. Pełnego porównania wszystkich szeregów nie robiono.
+- Bez restartu aktywnej v2 i bez poleceń urządzeniom. Home, przełączniki OFF,
+  brak nadpisań i terminu, epoka rc.4 i monotoniczność liczników zachowane.
+  Skróty źródeł v2 bez zmian. HA: running, Gotowe, 11/11 źródeł,
+  5/5 TRV, confirmed, energy_issue=none.
+- W pamięci administracyjnej AppDaemon pozostały dwa nieaktywne wpisy
+  `loaded`, każdy z zerem callbacków. Nie mają już aktywnych plików
+  konfiguracyjnych; znikną przy zwykłym restarcie dodatku. Nie wykonywano
+  globalnego restartu wyłącznie w celu wyczyszczenia tej listy.
+- README i runbook opisują aktywną v2 oraz oddzielnie szablon obserwacyjny
+  nowej instalacji. Zamrożone `legacy/` i `tests/legacy/` pozostają wzorcem
+  dla testów; nie są wdrożeniem. Pozostawiono nieaktywny wpis wykluczenia
+  starego licznika w Recorderze, bez globalnej zmiany konfiguracji HA.
+
+Prywatny raport: `reports/legacy-cleanup-20261029.md` i JSON; dowody:
+`runtime/cleanup-20261029/`. Archiwum odtworzeniowe AppDaemon:
+`codex-backups/smartheating-retirement-20261029T213947Z`, w tym oryginalne
+retained payloady i statystyki. Nie odtwarzać starego `active.json` bez
+uzgodnienia rosnących liczników i nie włączać równolegle v1 oraz v2.
