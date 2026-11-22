@@ -2,7 +2,7 @@
 
 Sterownik AppDaemon dla wspólnego obiegu podłogówki z RTL i grzejników. Wydanie `2.1.0` zachowuje obliczenia ważonego głosowania i udostępnia jawny arbitraż safety, Away, przygotowanie powrotu oraz dane do późniejszego strojenia. Obsługuje również stan Scheduler `triggered` bez chwilowej utraty aktywnego planu.
 
-W instalacji domowej aktywnie steruje `HeaterControllerV2` w wersji `2.0.0-rc.4`, z modułu `SmartHeating2.smartheating.appdaemon_app`. Zachowuje encje `sh_*` i tematy `smart_heating`. Dowody wdrożenia i pomiarów opisuje [rejestr](docs/implementation-status.md).
+W instalacji domowej aktywnie steruje `HeaterControllerV2` w wersji `2.1.0`, z modułu `SmartHeating2.smartheating.appdaemon_app`. Zachowuje encje `sh_*` i tematy `smart_heating`. Dowody wdrożenia i pomiarów opisuje [rejestr](docs/implementation-status.md).
 
 Repozytoryjny `cfg/app_cfg.yaml` pozostaje bezpiecznym szablonem **obserwacji dla nowej instalacji**: encje `sh2`, tematy `smart_heating_v2`, zero poleceń do fizycznych urządzeń. Nie jest kopią aktywnej konfiguracji domowej. Nowa instalacja przechodzi do sterowania po minimum 72 godzinach obserwacji i ocenie wyników zgodnie z [runbookiem](docs/runbook.md).
 

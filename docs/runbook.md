@@ -2,7 +2,7 @@
 
 Ten dokument prowadzi przez uruchomienie wersji 2.0 w domu ze wspólnym obiegiem grzejników i podłogówki ograniczanej zaworami RTL. Odbiór kodu, uruchomienie obserwacji i odbiór ogrzewania to osobne decyzje. Aktualne dowody i braki zapisujemy w [rejestrze wdrożenia](implementation-status.md).
 
-W instalacji domowej aktywnie steruje już `HeaterControllerV2` w wersji `2.0.0-rc.4`, z modułu `SmartHeating2.smartheating.appdaemon_app`, pod identyfikatorami `sh_*` i tematami `smart_heating`. Etapy 1–5 poniżej służą nowej instalacji lub kontrolowanej migracji; nie powtarzaj ich przy zwykłym porządkowaniu istniejącego wdrożenia. Repozytoryjny `cfg/app_cfg.yaml` jest szablonem oddzielnej obserwacji, a nie kopią aktywnej konfiguracji. Zachowaj bieżący stan, liczniki i epokę oceny przy pracach porządkowych.
+W instalacji domowej aktywnie steruje już `HeaterControllerV2` w wersji `2.1.0`, z modułu `SmartHeating2.smartheating.appdaemon_app`, pod identyfikatorami `sh_*` i tematami `smart_heating`. Etapy 1–5 poniżej służą nowej instalacji lub kontrolowanej migracji; nie powtarzaj ich przy zwykłym porządkowaniu istniejącego wdrożenia. Repozytoryjny `cfg/app_cfg.yaml` jest szablonem oddzielnej obserwacji, a nie kopią aktywnej konfiguracji. Zachowaj bieżący stan, liczniki i epokę oceny przy pracach porządkowych.
 
 ## Zakres i odpowiedzialność
 

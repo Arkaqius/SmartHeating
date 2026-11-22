@@ -1,6 +1,6 @@
 # SmartHeating 2.0 — rejestr wdrożenia i odbioru
 
-Rejestr rozróżnia zakres uzgodniony, dowody techniczne i wyniki pracy instalacji. Obecnie jedynym aktywnym sterownikiem jest `HeaterControllerV2`, wersja `2.0.0-rc.4`, z encjami `sh_*`. Wcześniejsze sekcje opisują historyczne etapy v1, obserwacji i przejęcia; nie są instrukcją ponownego uruchomienia tych aplikacji. Bieżące zdarzenia znajdują się na końcu dokumentu. Procedury operacyjne opisuje [runbook](runbook.md).
+Rejestr rozróżnia zakres uzgodniony, dowody techniczne i wyniki pracy instalacji. Obecnie jedynym aktywnym sterownikiem jest `HeaterControllerV2`, wersja `2.1.0`, z encjami `sh_*`. Wcześniejsze sekcje opisują historyczne etapy v1, obserwacji i przejęcia; nie są instrukcją ponownego uruchomienia tych aplikacji. Bieżące zdarzenia znajdują się na końcu dokumentu. Procedury operacyjne opisuje [runbook](runbook.md).
 
 ## Potwierdzone informacje wyjściowe
 
@@ -307,3 +307,14 @@ Prywatny raport: `reports/legacy-cleanup-20261029.md` i JSON; dowody:
 `codex-backups/smartheating-retirement-20261029T213947Z`, w tym oryginalne
 retained payloady i statystyki. Nie odtwarzać starego `active.json` bez
 uzgodnienia rosnących liczników i nie włączać równolegle v1 oraz v2.
+
+## Wdrożenie 2.1.0 — 23.11.2026, 00:15 Europe/Warsaw
+
+- `HeaterControllerV2` uruchomiono z wydania `v2.1.0`, commit
+  `c4cd90181b4b5ec74d84190d417ec01fe1cc8347`, konfiguracja `f5f4eab616934bfe`.
+  Po potwierdzeniu zatrzymania wymieniono dwa pliki Python, identyfikator
+  commita w `apps.yaml` i manifest. Przeładowanie nastąpiło bez restartu AppDaemon.
+- Zachowano tryb Home, nastawy instalacji, schemat stanu 2 oraz liczniki
+  pokojów i energii. Nowa epoka oceny zaczęła się o 00:15:07,8.
+- Po odebraniu raportów EMS Home Assistant pokazał „Gotowe”, 11/11 źródeł
+  pomiaru, 5/5 potwierdzonych głowic i zgodną nastawę CW400 21,5°C.
