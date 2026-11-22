@@ -1,4 +1,4 @@
-title: SmartHeating2.0
+title: SmartHeating — obserwacja
 views:
 - title: Obserwacja
   path: smartheating-v2
@@ -9,10 +9,7 @@ views:
   - type: grid
     cards:
     - type: markdown
-      content: '## SmartHeating2.0 — obserwacja
-
-        Zmiany profilu i celów służą do porównania obliczeń. Sterowanie fizyczne jest
-        zablokowane.'
+      content: Zmiany profilu i celów służą do porównania obliczeń. Sterowanie fizyczne jest zablokowane.
   - type: grid
     cards:
     - type: entities
@@ -20,9 +17,11 @@ views:
       show_header_toggle: false
       entities:
       - entity: select.sh2_profile
-        name: 'Profil: home / away_short / away_long'
-      - entity: text.sh2_arrival
-        name: 'Przyjazd: ISO8601 z przesunięciem UTC'
+        name: Profil domu
+      - entity: datetime.sh2_arrival_at
+        name: Data i godzina przyjazdu
+      - entity: button.sh2_cancel_arrival
+        name: Anuluj termin
       - entity: button.sh2_return_now
         name: Wracam teraz
       - entity: switch.sh2_force_flow_safety_rooms
@@ -36,12 +35,9 @@ views:
   - type: grid
     cards:
     - type: markdown
-      content: 'Away krótkie obniża cele podłogówki o0,5°C, grzejników o1°C. Away
-        wyjazdowe ogranicza je do18°C i17°C. Garaż zachowuje harmonogram.
-
-
-        Termin wpisz np. `2026-10-25T18:00:00+01:00`. Puste pole anuluje termin. Oszacowanie
-        gotowości nie jest gwarancją osiągnięcia celu.'
+      content: Krótka nieobecność obniża cele podłogówki o 0,5°C, a grzejników o 1°C.
+        Wyjazd ogranicza je do 18°C i 17°C. Garaż zachowuje harmonogram.
+        Gotowość do powrotu jest oszacowaniem.
   - type: grid
     cards:
     - type: entities

@@ -1,16 +1,17 @@
 # Obsługa ogrzewania w Home Assistant
 
-Dom jest głównym widokiem `/lovelace/smartheating`. Plan i powrót ma ścieżkę
-`smartheating-control`, diagnostyka `smartheating-debug`. Dawny link
-`smartheating-v2` pozostaje ukrytym widokiem tego samego panelu. CWU zachowuje
-oryginalne karty i akcje w głównym widoku.
+Ogrzewanie jest głównym widokiem `/lovelace/smartheating`. Plan i powrót ma
+ścieżkę `smartheating-control`, diagnostyka `smartheating-debug`. Nawigację
+zapewniają zakładki Lovelace. Dawny adres `smartheating-v2` otwiera podwidok
+z odnośnikiem do Ogrzewania. W domowej instalacji karty i akcje CWU są
+w głównym widoku.
 
 ## Zasady interfejsu
 
 Interfejs dziedziczy motyw i font HA. Akcent sterowania używa `--primary-color`
 (domyslnie #1565c0), tekst #1b263b, tekst pomocniczy #5a6575, podziały #d7dde5,
 błędy #b3261e; własny CSS jest ograniczony do edytora harmonogramu.
-Dom układa podsumowanie, parter i piętro w sekcjach reflow HA (jedna kolumna
+Ogrzewanie układa podsumowanie, parter i piętro w sekcjach reflow HA (jedna kolumna
 na telefonie). Plan skupia wybór przyjazdu i przedziały temperatur. Diagnostyka
 pokazuje techniczne odczyty osobno. Brak dekoracyjnej animacji; pola i przyciski
 mają min. 44 px, widoczny focus, etykiety i komunikaty aria-live.
@@ -49,3 +50,5 @@ pokojach. Potrzebuje ciepła jest zapotrzebowaniem; palnik i CO/CWU pochodzą
 z osobnych odczytów EMS. Ochrona komfortu i dogrzanie są w diagnostyce.
 Odczyty raw oraz stare encje zachowują kompatybilność; zamrożony czas pętli v1
 nie jest już pokazywany. Widoki generuje `python -m smartheating.dashboard`.
+Dla osobnego dashboardu użyj `--dashboard-path /dashboard-heating`, podstawiając
+jego adres, aby odnośnik ze starego podwidoku wskazywał właściwe miejsce.

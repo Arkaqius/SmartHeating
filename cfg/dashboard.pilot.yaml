@@ -1,6 +1,6 @@
 title: Ogrzewanie
 views:
-- title: Dom
+- title: Ogrzewanie
   path: smartheating
   icon: mdi:home-thermometer
   type: sections
@@ -8,28 +8,6 @@ views:
   sections:
   - type: grid
     cards:
-    - type: grid
-      columns: 3
-      square: false
-      cards:
-      - type: button
-        name: Dom
-        icon: mdi:home-thermometer
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating
-      - type: button
-        name: Plan i powrót
-        icon: mdi:calendar-clock
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-control
-      - type: button
-        name: Diagnostyka
-        icon: mdi:stethoscope
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-debug
     - type: markdown
       content: '## {{ states(''sensor.sh_actual_mode_label'') }}
 
@@ -157,8 +135,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_livingroom_target_source
@@ -197,8 +174,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_corridor_target_source
@@ -237,8 +213,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_bathroom_target_source
@@ -277,8 +252,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_entrance_target_source
@@ -317,8 +291,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_garage_target_source
@@ -362,8 +335,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_bedroom_target_source
@@ -402,8 +374,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_kidsroom_target_source
@@ -442,8 +413,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_office_target_source
@@ -482,8 +452,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_upper_corridor_target_source
@@ -522,8 +491,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_upper_bathroom_target_source
@@ -562,8 +530,7 @@ views:
 
 
         {{ state_attr(e, ''target_source_label'') or ''Oczekiwanie na dane'' }}{%
-        if not state_attr(e, ''measurement_available'') %} · Brak pomiaru{% endif
-        %}{% if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
+        if state_attr(e, ''needs_heat'') %} · Potrzebuje ciepła{% endif %}'
     - type: conditional
       conditions:
       - entity: sensor.sh_wardrobe_target_source
@@ -593,28 +560,6 @@ views:
   sections:
   - type: grid
     cards:
-    - type: grid
-      columns: 3
-      square: false
-      cards:
-      - type: button
-        name: Dom
-        icon: mdi:home-thermometer
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating
-      - type: button
-        name: Plan i powrót
-        icon: mdi:calendar-clock
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-control
-      - type: button
-        name: Diagnostyka
-        icon: mdi:stethoscope
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-debug
     - type: heading
       heading: Nieobecność i powrót
       icon: mdi:bag-suitcase
@@ -816,28 +761,6 @@ views:
   sections:
   - type: grid
     cards:
-    - type: grid
-      columns: 3
-      square: false
-      cards:
-      - type: button
-        name: Dom
-        icon: mdi:home-thermometer
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating
-      - type: button
-        name: Plan i powrót
-        icon: mdi:calendar-clock
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-control
-      - type: button
-        name: Diagnostyka
-        icon: mdi:stethoscope
-        tap_action:
-          action: navigate
-          navigation_path: /lovelace/smartheating-debug
     - type: markdown
       content: '## {{ states(''sensor.sh_actual_mode_label'') }}
 
@@ -1017,3 +940,19 @@ views:
         name: CO
       - entity: sensor.boiler_dhw_energy
         name: CWU
+- title: Ogrzewanie
+  path: smartheating-v2
+  icon: mdi:home-thermometer
+  type: sections
+  max_columns: 1
+  subview: true
+  back_path: /lovelace/smartheating
+  sections:
+  - type: grid
+    cards:
+    - type: button
+      name: Otwórz ogrzewanie
+      icon: mdi:home-thermometer
+      tap_action:
+        action: navigate
+        navigation_path: /lovelace/smartheating

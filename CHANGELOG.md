@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.0 — 2026-11-22
+
+- Pierwsze stabilne wydanie sterownika v2. Obejmuje obsługę Scheduler
+  `triggered`, profile nieobecności, plan powrotu, sterowanie pokojami
+  i diagnostykę pomiarów z wcześniejszych wydań kandydackich.
+- Trzy zakładki porządkują panel Home Assistant: Ogrzewanie,
+  Plan i powrót oraz Diagnostyka. Stary adres `smartheating-v2` prowadzi
+  do odnośnika do głównego widoku. Szablon obserwacji korzysta z natywnego
+  wyboru daty powrotu i przycisku anulowania.
+- Aktualizacja zachowuje konfigurację i schemat stanu 2 oraz dotychczasowe
+  identyfikatory encji. Pierwszy start 2.1.0 otwiera nowy okres oceny zgodnie
+  z dotychczasową regułą wersjonowania okresów.
+
 ## 2.0.0-rc.4 — 2026-10-27
 
 - Stan Scheduler `triggered` zachowuje aktywny plan. Wykonanie przedziału nie

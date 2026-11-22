@@ -1,6 +1,6 @@
 """Build native HA views; this module never writes to Home Assistant."""
 
-import json
+import argparse
 from pathlib import Path
 
 from .config import NAMES
@@ -42,27 +42,6 @@ def button(
     return {"type": "button", "name": name, "icon": icon, "tap_action": tap}
 
 
-def navigation() -> dict[str, object]:
-    return {
-        "type": "grid",
-        "columns": 3,
-        "square": False,
-        "cards": [
-            {
-                "type": "button",
-                "name": title,
-                "icon": icon,
-                "tap_action": {"action": "navigate", "navigation_path": f"/lovelace/{path}"},
-            }
-            for title, icon, path in (
-                ("Dom", "mdi:home-thermometer", "smartheating"),
-                ("Plan i powrót", "mdi:calendar-clock", "smartheating-control"),
-                ("Diagnostyka", "mdi:stethoscope", "smartheating-debug"),
-            )
-        ],
-    }
-
-
 def room_cards(key: str) -> list[dict[str, object]]:
     entity = f"climate.sh_{key}"
     return [
@@ -83,7 +62,6 @@ def room_cards(key: str) -> list[dict[str, object]]:
             "{% else %}Brak pomiaru · {% endif %}"
             "Cel **{{ state_attr(e, 'temperature') }}°C**\n\n"
             "{{ state_attr(e, 'target_source_label') or 'Oczekiwanie na dane' }}"
-            "{% if not state_attr(e, 'measurement_available') %} · Brak pomiaru{% endif %}"
             "{% if state_attr(e, 'needs_heat') %} · Potrzebuje ciepła{% endif %}"
         ),
         {
@@ -108,7 +86,7 @@ def room_cards(key: str) -> list[dict[str, object]]:
     ]
 
 
-def build() -> list[dict[str, object]]:
+def build(dashboard_path: str = "/lovelace") -> list[dict[str, object]]:
     summary = """## {{ states('sensor.sh_actual_mode_label') }}
 **Sterowanie:** {{ states('sensor.sh_system_status') }}
 {% set s = 'sensor.sh_system_summary' %}
@@ -159,7 +137,7 @@ Odczyt nastawy potwierdza ustawienie regulatora. Temperaturę pomieszczenia ocen
             )
         ],
     }
-    home_sections = [section([navigation(), markdown(summary), profiles, markdown(boiler)])]
+    home_sections = [section([markdown(summary), profiles, markdown(boiler)])]
     for label, icon, keys in (
         (
             "Parter",
@@ -177,7 +155,7 @@ Odczyt nastawy potwierdza ustawienie regulatora. Temperaturę pomieszczenia ocen
             cards.extend(room_cards(key))
         home_sections.append(section(cards))
     home: dict[str, object] = {
-        "title": "Dom",
+        "title": "Ogrzewanie",
         "path": "smartheating",
         "icon": "mdi:home-thermometer",
         "type": "sections",
@@ -221,7 +199,6 @@ Wybierz profil nieobecności, aby uruchomić przygotowanie powrotu.
         "sections": [
             section(
                 [
-                    navigation(),
                     heading("Nieobecność i powrót", "mdi:bag-suitcase"),
                     profiles,
                     markdown(
@@ -276,7 +253,6 @@ Wybierz profil nieobecności, aby uruchomić przygotowanie powrotu.
         "sections": [
             section(
                 [
-                    navigation(),
                     markdown(summary),
                     entities(
                         "Aplikacja i wykonanie",
@@ -384,21 +360,45 @@ Wybierz profil nieobecności, aby uruchomić przygotowanie powrotu.
     sections = diagnostics["sections"]
     assert isinstance(sections, list)
     sections.append(section(history))
-    return [home, plan, diagnostics]
+    home_path = f"{dashboard_path.rstrip('/')}/smartheating"
+    compatibility = {
+        "title": "Ogrzewanie",
+        "path": "smartheating-v2",
+        "icon": "mdi:home-thermometer",
+        "type": "sections",
+        "max_columns": 1,
+        "subview": True,
+        "back_path": home_path,
+        "sections": [
+            section(
+                [
+                    {
+                        "type": "button",
+                        "name": "Otwórz ogrzewanie",
+                        "icon": "mdi:home-thermometer",
+                        "tap_action": {"action": "navigate", "navigation_path": home_path},
+                    }
+                ]
+            )
+        ],
+    }
+    return [home, plan, diagnostics, compatibility]
 
 
 def main() -> None:
     import yaml
 
-    views = build()
-    Path("cfg/dashboard.pilot.yaml").write_text(
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--output", type=Path, default=Path("cfg/dashboard.pilot.yaml"))
+    parser.add_argument("--dashboard-path", default="/lovelace")
+    args = parser.parse_args()
+    args.output.write_text(
         yaml.safe_dump(
-            {"title": "Ogrzewanie", "views": views}, sort_keys=False, allow_unicode=True
+            {"title": "Ogrzewanie", "views": build(args.dashboard_path)},
+            sort_keys=False,
+            allow_unicode=True,
         ),
         encoding="utf-8",
-    )
-    Path("runtime/ux-20261026/views.json").write_text(
-        json.dumps(views, ensure_ascii=True), encoding="utf-8"
     )
 
 

@@ -1,6 +1,6 @@
-# SmartHeating 2.0
+# SmartHeating 2.1
 
-Sterownik AppDaemon dla wspólnego obiegu podłogówki z RTL i grzejników. Wydanie `2.0.0-rc.4` zachowuje obliczenia ważonego głosowania i udostępnia jawny arbitraż safety, Away, przygotowanie powrotu oraz dane do późniejszego strojenia. Obsługuje również stan Scheduler `triggered` bez chwilowej utraty aktywnego planu.
+Sterownik AppDaemon dla wspólnego obiegu podłogówki z RTL i grzejników. Wydanie `2.1.0` zachowuje obliczenia ważonego głosowania i udostępnia jawny arbitraż safety, Away, przygotowanie powrotu oraz dane do późniejszego strojenia. Obsługuje również stan Scheduler `triggered` bez chwilowej utraty aktywnego planu.
 
 W instalacji domowej aktywnie steruje `HeaterControllerV2` w wersji `2.0.0-rc.4`, z modułu `SmartHeating2.smartheating.appdaemon_app`. Zachowuje encje `sh_*` i tematy `smart_heating`. Dowody wdrożenia i pomiarów opisuje [rejestr](docs/implementation-status.md).
 
@@ -67,9 +67,9 @@ raportów zawierających buforowany stan i diagnostykę opisuje
 
 ## Away i dashboard
 
-Działający dashboard ma trzy widoki: [Dom](https://ha.kojbito.org/lovelace/smartheating), [Plan i powrót](https://ha.kojbito.org/lovelace/smartheating-control) oraz [Diagnostyka](https://ha.kojbito.org/lovelace/smartheating-debug). Ścieżka [smartheating-v2](https://ha.kojbito.org/lovelace/smartheating-v2) pozostaje aktywnym aliasem zgodności.
+Dashboard ma trzy widoki: [Ogrzewanie](https://ha.kojbito.org/lovelace/smartheating), [Plan i powrót](https://ha.kojbito.org/lovelace/smartheating-control) oraz [Diagnostyka](https://ha.kojbito.org/lovelace/smartheating-debug). Stary adres [smartheating-v2](https://ha.kojbito.org/lovelace/smartheating-v2) zawiera odnośnik do głównego widoku.
 
-Szablony dla nowej instalacji: [obserwacja](cfg/dashboard.shadow.yaml) i [pilotaż](cfg/dashboard.pilot.yaml). Zawierają profil, termin, „Wracam teraz”, cele i gotowość każdego pokoju oraz diagnostykę obu safety rooms. Termin przyjmuje ISO8601 z przesunięciem UTC; pusta wartość go usuwa. Czasy gotowości są oszacowaniem.
+Szablony dla nowej instalacji: [obserwacja](cfg/dashboard.shadow.yaml) i [pilotaż](cfg/dashboard.pilot.yaml). Zawierają profil, termin powrotu, anulowanie terminu, cele pokojów i oszacowania gotowości. Pilotaż korzysta z modułu [edytora harmonogramu](frontend/smartheating-schedule.mjs), który trzeba zarejestrować jako zasób JavaScript w Lovelace.
 
 Normalny tryb TS0601 to `auto` z presetem `manual`. `heat` może wymuszać pełne otwarcie. Wykonanie usługi HA nie jest potwierdzeniem nastawy; aplikacja sprawdza oba atrybuty i temperaturę każdej głowicy. Informacja o żądaniu ciepła nie potwierdza palnika ani przepływu w RTL.
 
@@ -89,11 +89,13 @@ Współczynnik gazu wynosi **11,594 kWh/m³** z faktury użytkownika. Okres fakt
 
 | Element | Wersja |
 | --- | --- |
-| Aplikacja | `2.0.0-rc.4` (pakiet Python: `2.0.0rc4`) |
+| Aplikacja i pakiet Python | `2.1.0` |
 | Konfiguracja | `2` |
 | Stan trwały | `2`, testowana migracja z `1` |
 | Raport | `1` |
 
-Zmiany opisuje [changelog](CHANGELOG.md). Testy techniczne nie potwierdzają jeszcze komfortu ±0,5°C ani oszczędności gazu. Ocena ogrzewania wymaga pilotażu, danych pogodowych i kosztu ponownego nagrzania. Hydraulika wspólnego obiegu pozostaje ograniczeniem instalacji.
+Zmiany opisuje [changelog](CHANGELOG.md). Zmiana na stabilną wersję w `main` publikuje wydanie GitHub po przejściu CI. Wydanie zawiera kod źródłowy i ZIP obserwacyjny z manifestem.
+
+Testy techniczne nie potwierdzają jeszcze komfortu ±0,5°C ani oszczędności gazu. Ocena ogrzewania wymaga pilotażu, danych pogodowych i kosztu ponownego nagrzania. Hydraulika wspólnego obiegu pozostaje ograniczeniem instalacji.
 
 Odbiór aktywnego sterowania i aktualne luki danych są opisane w [rejestrze wdrożenia](docs/implementation-status.md).
